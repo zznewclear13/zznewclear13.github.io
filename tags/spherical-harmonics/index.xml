@@ -2,20 +2,20 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Spherical Harmonics on ZZNEWCLEAR13</title>
-    <link>https://zznewclear13.com/tags/spherical-harmonics/</link>
+    <link>https://zznewclear13.github.io/tags/spherical-harmonics/</link>
     <description>Recent content in Spherical Harmonics on ZZNEWCLEAR13</description>
     <image>
-      <url>https://zznewclear13.com/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
-      <link>https://zznewclear13.com/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
+      <url>https://zznewclear13.github.io/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
+      <link>https://zznewclear13.github.io/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Thu, 17 Jun 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.com/tags/spherical-harmonics/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 17 Jun 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/spherical-harmonics/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>使用Compute Shader计算球谐全局光照</title>
-      <link>https://zznewclear13.com/posts/calculate-spherical-harmonics-using-compute-shader/</link>
+      <link>https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/</link>
       <pubDate>Thu, 17 Jun 2021 19:00:00 +0800</pubDate>
       
-      <guid>https://zznewclear13.com/posts/calculate-spherical-harmonics-using-compute-shader/</guid>
+      <guid>https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/</guid>
       <description>大概记一些Unity Compute Shader相关的东西吧.</description>
     </item>
     
