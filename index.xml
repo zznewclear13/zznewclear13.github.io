@@ -9,7 +9,16 @@
       <link>https://zznewclear13.github.io/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Thu, 01 Jul 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 03 Jul 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>从深度图中获取世界空间的坐标</title>
+      <link>https://zznewclear13.github.io/posts/get-world-space-position-from-depth-texture/</link>
+      <pubDate>Sat, 03 Jul 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/get-world-space-position-from-depth-texture/</guid>
+      <description>记录一下从深度图重建世界坐标的方法和其中的坑.</description>
+    </item>
+    
     <item>
       <title>Unity空间变换总览</title>
       <link>https://zznewclear13.github.io/posts/unity-space-transformation-overview/</link>
