@@ -9,7 +9,16 @@
       <link>https://zznewclear13.github.io/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sat, 03 Jul 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 11 Jul 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>支持Animator Controller的实时GPU蒙皮</title>
+      <link>https://zznewclear13.github.io/posts/unity-gpu-skinning-with-animator-controller/</link>
+      <pubDate>Sun, 11 Jul 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/unity-gpu-skinning-with-animator-controller/</guid>
+      <description>虽然不是特别完善，但好歹记录一下做过的事情.</description>
+    </item>
+    
     <item>
       <title>从深度图中获取世界空间的坐标</title>
       <link>https://zznewclear13.github.io/posts/get-world-space-position-from-depth-texture/</link>
