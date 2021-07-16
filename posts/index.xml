@@ -9,7 +9,16 @@
       <link>https://zznewclear13.github.io/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
     </image>
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sun, 11 Jul 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Thu, 15 Jul 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>在Unity SRP中实现TAA效果</title>
+      <link>https://zznewclear13.github.io/posts/temporal-reprojection-anti-aliasing/</link>
+      <pubDate>Thu, 15 Jul 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/temporal-reprojection-anti-aliasing/</guid>
+      <description>抖动相机来实现TAA抗锯齿效果.</description>
+    </item>
+    
     <item>
       <title>支持Animator Controller的实时GPU蒙皮</title>
       <link>https://zznewclear13.github.io/posts/unity-gpu-skinning-with-animator-controller/</link>
