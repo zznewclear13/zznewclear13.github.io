@@ -2,6 +2,9 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://zznewclear13.github.io/categories/</loc>
+    <lastmod>2021-07-15T19:00:00+08:00</lastmod>
+  </url><url>
     <loc>https://zznewclear13.github.io/posts/</loc>
     <lastmod>2021-07-15T19:00:00+08:00</lastmod>
   </url><url>
@@ -9,6 +12,9 @@
     <lastmod>2021-07-15T19:00:00+08:00</lastmod>
   </url><url>
     <loc>https://zznewclear13.github.io/tags/temporal-anti-aliasing/</loc>
+    <lastmod>2021-07-15T19:00:00+08:00</lastmod>
+  </url><url>
+    <loc>https://zznewclear13.github.io/categories/unity/</loc>
     <lastmod>2021-07-15T19:00:00+08:00</lastmod>
   </url><url>
     <loc>https://zznewclear13.github.io/tags/unity-srp/</loc>
@@ -55,7 +61,5 @@
   </url><url>
     <loc>https://zznewclear13.github.io/posts/get-started-with-unity-compute-shader/</loc>
     <lastmod>2021-06-16T19:00:00+08:00</lastmod>
-  </url><url>
-    <loc>https://zznewclear13.github.io/categories/</loc>
   </url>
 </urlset>

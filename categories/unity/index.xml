@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>unity on ZZNEWCLEAR13</title>
+    <link>https://zznewclear13.github.io/categories/unity/</link>
+    <description>Recent content in unity on ZZNEWCLEAR13</description>
+    <image>
+      <url>https://zznewclear13.github.io/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
+      <link>https://zznewclear13.github.io/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
+    </image>
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Thu, 15 Jul 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/categories/unity/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>在Unity SRP中实现TAA效果</title>
+      <link>https://zznewclear13.github.io/posts/temporal-reprojection-anti-aliasing/</link>
+      <pubDate>Thu, 15 Jul 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/temporal-reprojection-anti-aliasing/</guid>
+      <description>抖动相机来实现TAA抗锯齿效果.</description>
+    </item>
+    
+    <item>
+      <title>支持Animator Controller的实时GPU蒙皮</title>
+      <link>https://zznewclear13.github.io/posts/unity-gpu-skinning-with-animator-controller/</link>
+      <pubDate>Sun, 11 Jul 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/unity-gpu-skinning-with-animator-controller/</guid>
+      <description>虽然不是特别完善，但好歹记录一下做过的事情.</description>
+    </item>
+    
+    <item>
+      <title>从深度图中获取世界空间的坐标</title>
+      <link>https://zznewclear13.github.io/posts/get-world-space-position-from-depth-texture/</link>
+      <pubDate>Sat, 03 Jul 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/get-world-space-position-from-depth-texture/</guid>
+      <description>记录一下从深度图重建世界坐标的方法和其中的坑.</description>
+    </item>
+    
+    <item>
+      <title>Unity空间变换总览</title>
+      <link>https://zznewclear13.github.io/posts/unity-space-transformation-overview/</link>
+      <pubDate>Thu, 01 Jul 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/unity-space-transformation-overview/</guid>
+      <description>梳理一下Unity中的空间变换.</description>
+    </item>
+    
+    <item>
+      <title>使用Compute Shader计算有向距离场</title>
+      <link>https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/</link>
+      <pubDate>Mon, 21 Jun 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/</guid>
+      <description>使用Jump Flooding Algorithm来对一张图片计算有向距离场.</description>
+    </item>
+    
+    <item>
+      <title>使用Compute Shader计算球谐全局光照</title>
+      <link>https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/</link>
+      <pubDate>Thu, 17 Jun 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/</guid>
+      <description>Compute Shader的一些应用方法.</description>
+    </item>
+    
+    <item>
+      <title>Unity Compute Shader备忘录</title>
+      <link>https://zznewclear13.github.io/posts/get-started-with-unity-compute-shader/</link>
+      <pubDate>Wed, 16 Jun 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/get-started-with-unity-compute-shader/</guid>
+      <description>大概记一些Unity Compute Shader相关的东西吧.</description>
+    </item>
+    
+  </channel>
+</rss>
