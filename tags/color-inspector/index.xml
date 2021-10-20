@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Color Inspector on ZZNEWCLEAR13</title>
+    <link>https://zznewclear13.github.io/tags/color-inspector/</link>
+    <description>Recent content in Color Inspector on ZZNEWCLEAR13</description>
+    <image>
+      <url>https://zznewclear13.github.io/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</url>
+      <link>https://zznewclear13.github.io/%3Clink%20or%20path%20of%20image%20for%20opengraph,%20twitter-cards%3E</link>
+    </image>
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Wed, 20 Oct 2021 18:07:20 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/color-inspector/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>GPU颜色查看器</title>
+      <link>https://zznewclear13.github.io/posts/gpu-color-inspector/</link>
+      <pubDate>Wed, 20 Oct 2021 18:07:20 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/gpu-color-inspector/</guid>
+      <description>使用Compute Shader制作一个GPU上的颜色查看器.</description>
+    </item>
+    
+  </channel>
+</rss>
