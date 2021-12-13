@@ -12,7 +12,16 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Thu, 02 Dec 2021 17:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 12 Dec 2021 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>在Unity中绘制等宽的描边</title>
+      <link>https://zznewclear13.github.io/posts/draw-equal-width-outline-in-unity/</link>
+      <pubDate>Sun, 12 Dec 2021 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/draw-equal-width-outline-in-unity/</guid>
+      <description>在Unity中绘制等宽且抗锯齿的描边.</description>
+    </item>
+    
     <item>
       <title>在Unity中绘制等宽线条</title>
       <link>https://zznewclear13.github.io/posts/draw-equal-width-line-in-unity/</link>
