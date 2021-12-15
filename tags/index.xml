@@ -12,13 +12,22 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sun, 12 Dec 2021 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 15 Dec 2021 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Anti-Aliasing</title>
       <link>https://zznewclear13.github.io/tags/anti-aliasing/</link>
-      <pubDate>Sun, 12 Dec 2021 12:00:00 +0800</pubDate>
+      <pubDate>Wed, 15 Dec 2021 12:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/tags/anti-aliasing/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Bezier Curve</title>
+      <link>https://zznewclear13.github.io/tags/bezier-curve/</link>
+      <pubDate>Wed, 15 Dec 2021 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/bezier-curve/</guid>
       <description></description>
     </item>
     

@@ -12,7 +12,16 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sun, 12 Dec 2021 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 15 Dec 2021 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>在Unity的UI中绘制等宽的贝赛尔曲线</title>
+      <link>https://zznewclear13.github.io/posts/draw-equal-width-bezier-curve-in-unity/</link>
+      <pubDate>Wed, 15 Dec 2021 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/draw-equal-width-bezier-curve-in-unity/</guid>
+      <description>在Unity的UI中绘制等宽的贝赛尔曲线，可实时控制长宽、弯曲程度和阴影等参数.</description>
+    </item>
+    
     <item>
       <title>在Unity中绘制等宽的描边</title>
       <link>https://zznewclear13.github.io/posts/draw-equal-width-outline-in-unity/</link>
