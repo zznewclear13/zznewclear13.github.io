@@ -40,5 +40,14 @@
       <description>在Unity世界空间中画一条等宽且抗锯齿的直线.</description>
     </item>
     
+    <item>
+      <title>在Unity SRP中实现TAA效果</title>
+      <link>https://zznewclear13.github.io/posts/temporal-reprojection-anti-aliasing/</link>
+      <pubDate>Thu, 15 Jul 2021 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/temporal-reprojection-anti-aliasing/</guid>
+      <description>抖动相机来实现TAA抗锯齿效果.</description>
+    </item>
+    
   </channel>
 </rss>
