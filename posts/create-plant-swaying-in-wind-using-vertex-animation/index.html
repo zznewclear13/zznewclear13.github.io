@@ -1,0 +1,814 @@
+<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>使用顶点动画制作随风飘动的植物 | ZZNEWCLEAR13</title><meta name=keywords content="Vertex Animation,Space Transformation"><meta name=description content="从Maya到Unity的一整套制作流程."><meta name=author content="zznewclear13"><link rel=canonical href=https://zznewclear13.github.io/posts/create-plant-swaying-in-wind-using-vertex-animation/><link crossorigin=anonymous href=/assets/css/stylesheet.min.271a60922b24f96a1ee45097f47002c4807a7a7c107386422099ac8c8af51f93.css integrity="sha256-Jxpgkisk+Woe5FCX9HACxIB6enwQc4ZCIJmsjIr1H5M=" rel="preload stylesheet" as=style><link rel=preload href=/images/address.png as=image><link rel=preload href=/apple-touch-icon.png as=image><link rel=icon href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=32x32 href=https://zznewclear13.github.io/favicon.ico><link rel=apple-touch-icon href=https://zznewclear13.github.io/favicon.ico><link rel=mask-icon href=https://zznewclear13.github.io/favicon.ico><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><meta name=generator content="Hugo 0.83.1"><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css integrity=sha384-Um5gpz1odJg5Z4HAmzPtgZKdTBHZdw8S29IecapCSB31ligYPhHQZMIlWLYQGVoc crossorigin=anonymous><script defer src=https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js integrity=sha384-YNHdsYkH6gMx9y3mRkmcJ2mFUjTd0qNQQvY9VYZgQd7DcN7env35GzlmFaZ23JGp crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/contrib/auto-render.min.js integrity=sha384-vZTG03m+2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl crossorigin=anonymous onload=renderMathInElement(document.body)></script><script type=application/javascript>var doNotTrack=!1;doNotTrack||(function(a,e,f,g,b,c,d){a.GoogleAnalyticsObject=b,a[b]=a[b]||function(){(a[b].q=a[b].q||[]).push(arguments)},a[b].l=1*new Date,c=e.createElement(f),d=e.getElementsByTagName(f)[0],c.async=1,c.src=g,d.parentNode.insertBefore(c,d)}(window,document,'script','https://www.google-analytics.com/analytics.js','ga'),ga('create','UA-157509723-1','auto'),ga('send','pageview'))</script><meta property="og:title" content="使用顶点动画制作随风飘动的植物"><meta property="og:description" content="从Maya到Unity的一整套制作流程."><meta property="og:type" content="article"><meta property="og:url" content="https://zznewclear13.github.io/posts/create-plant-swaying-in-wind-using-vertex-animation/"><meta property="og:image" content="https://zznewclear13.github.io/posts/create-plant-swaying-in-wind-using-vertex-animation/posts/images/VertexAnimatedPlant.gif"><meta property="article:section" content="posts"><meta property="article:published_time" content="2022-01-06T12:00:00+08:00"><meta property="article:modified_time" content="2022-01-06T12:00:00+08:00"><meta property="og:site_name" content="ZZNEWCLEAR13 - Should I say something cool here?"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://zznewclear13.github.io/posts/create-plant-swaying-in-wind-using-vertex-animation/posts/images/VertexAnimatedPlant.gif"><meta name=twitter:title content="使用顶点动画制作随风飘动的植物"><meta name=twitter:description content="从Maya到Unity的一整套制作流程."><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://zznewclear13.github.io/posts/"},{"@type":"ListItem","position":2,"name":"使用顶点动画制作随风飘动的植物","item":"https://zznewclear13.github.io/posts/create-plant-swaying-in-wind-using-vertex-animation/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"使用顶点动画制作随风飘动的植物","name":"使用顶点动画制作随风飘动的植物","description":"从Maya到Unity的一整套制作流程.","keywords":["Vertex Animation","Space Transformation"],"articleBody":"动机和想要实现的效果 最直接的动机是看了顽皮狗在Siggraph 2016上的PPT，里面介绍了顽皮狗在神秘海域中是如何让植被随风飘荡的。他们介绍了一种将植被的每一部分的pivot的物体空间坐标写到顶点色里，然后在shader中使用这个坐标进行风的效果的计算的方法。较为震撼在风吹过草原时，植被进行弯曲后，草表面的高光会有一种时空上的起伏感（也就是说神秘海域的植被的法线也会被风影响）。所以我也想要借助写pivot的方法来制作植被受到风吹的效果，通过这个方法计算出正确的风吹之后的植被的法线（同时由于法线贴图的存在，还要计算正确的切线）。\n稍微翻了一下网上的资料（也没仔细地去搜索），大部分的就是一个普通的顶点动画，有的是用的sin，有的就直接平移。这就产生了第二个需求，植被在顶点动画中应该保持差不多的长度，不然会发现很明显的拉伸的效果。\n当然最好还能投射出正常的影子了，这一步只需要把顶点着色器复制一份到投射影子的pass里就可以了。\n这里使用的植被模型是MegaScans上的CORDYLINE模型中的var12这个小模型。\n难点和相对应的应对方法 Unity的顶点色限制 稍微测试一下就能发现，Unity的顶点色是UNorm8的格式，也就是说无论你在Maya或是3ds Max里导出的模型的顶点色信息是什么样的，导入到Unity中就会变成只有256精度的UNorm8。顽皮狗使用的是自己的引擎，所以它们能够使用全精度的顶点色，但是由于Unity的引擎限制，我们可以考虑到导出pivot的顶点坐标到模型的UV中。\n但是很不幸的是，fbx导入到Unity时，即使UV是float4的类型（也就是32bytes)，在Unity中只会识别UV的前两位。所以只能无奈的将pivot的顶点坐标（float3的数据）储存到两个UV的三个通道里，同时将pivot的层级存到剩下的一个通道里。我不知道顽皮狗具体是怎么计算pivot的层级关系的，他在PPT中写的是无需计算，但我在实际操作中只能一层一层的算（而且只能算两层），也希望知道具体怎么操作的人告知一下方法。\n所以接下来要做的是在Maya中把pivot的物体空间坐标和pivot的层级写到对应顶点的某两套UV中，本文是写到第二套和第三套UV中（也就是TEXCOORD1和TEXCOORD2）。于是我恶补了一下maya的python脚本的写法，不过在写数值到UV中时，又遇到了一个小问题。Maya的cmds.polyEditUV这个方法，明明能传入uvSetName这个参数，用于操作对应的UV，但我实际使用时只能写数值到当前的UV中，导致最后写的脚本只能僵硬的操作当前UV，每次切换UV时需要重新修改脚本再运行一次。\n最终的脚本是这样的：\nVertexPivotWriteTool.py import maya.cmds as cmds targetVertexStr = \"Select any vertex to start.\" vertexColorStr = \"Select any vertex to start.\" pivotPosition = [0.0, 0.0, 0.0] def ui(): if cmds.window(\"VertexPivotWriteTool\", exists = True): cmds.deleteUI(\"VertexPivotWriteTool\") global targetVertexStr global targetVertexField global vertexColorStr global vertexColorField global pivotLayer vertexPivotWindow = cmds.window(\"VertexPivotWriteTool\", widthHeight = [500, 400]) form = cmds.formLayout(numberOfDivisions = 100) pivotLayerLable = cmds.text(\"Pivot Layer (0 for root pivot)\") pivotLayer = cmds.intField() cmds.intField(pivotLayer, e = True, minValue = 0, maxValue = 5, step = 1, value = 0) targetVertexButton = cmds.button(\"Target Vertex\", command = 'GetTargetVertex()') targetVertexField = cmds.textField(text=targetVertexStr, width = 300) #writeVertexButton = cmds.button(\"Write to Vertex Color\", command = 'WriteToVertexColor()') writeVertexButton = cmds.button(\"Write to Vertex Texcoord\", command = 'WriteToVertexTexcoord()') targetVertexColorButton = cmds.button(\"Show Vertex Color\", command = 'GetTargetVertexColor()') vertexColorField = cmds.textField(text=vertexColorStr, width = 300) cmds.showWindow(vertexPivotWindow) cmds.formLayout(form, e=True, attachForm = ( [pivotLayerLable, 'left', 25], [pivotLayerLable, 'top', 20], [pivotLayer, 'right', 25], [pivotLayer, 'top', 20], [targetVertexButton, 'left', 25], [targetVertexButton, 'top', 60], [targetVertexField, 'right', 25], [targetVertexField, 'top', 60], [writeVertexButton, 'left', 25], [writeVertexButton, 'top', 100], [targetVertexColorButton, 'left', 25], [targetVertexColorButton, 'bottom', 20], [vertexColorField, 'right', 25], [vertexColorField, 'bottom', 20], )) def GetPivotLayer(): value = cmds.intField(pivotLayer, q=True, value=True) print(\"pivotLayerValue is: \" + str(value)) return value def GetTargetVertex(): print(\"Get Target Vertex...\") selVertices = cmds.ls(selection = True) global targetVertexStr global pivotPosition if len(selVertices) == 0: targetVertexStr = \"No vetex selected!\" elif len(selVertices) = 2: targetVertexStr = \"Too many vertices selected! Expected 1, got \" + str(len(selVertices)) else: pivotPosition = cmds.pointPosition(selVertices[0]) tempStr = \"(\" for axis in range(len(pivotPosition)): if axis = 1: tempStr += \", \" tempStr += \"{:.2f}\".format(pivotPosition[axis]) tempStr += \")\" targetVertexStr = tempStr cmds.textField(targetVertexField, e= True, text = targetVertexStr) def GetTargetVertexColor(): print(\"Get Target Vertex...\") selVertices = cmds.ls(selection = True) global vertexColorStr if len(selVertices) == 0: vertexColorStr = \"No vetex selected!\" elif len(selVertices) = 2: vertexColorStr = \"Too many vertices selected! Expected 1, got \" + str(len(selVertices)) else: vertexColor = cmds.polyColorPerVertex(query=True, rgb=True) tempStr = \"(\" for axis in range(len(vertexColor)): if axis = 1: tempStr += \", \" tempStr += \"{:.2f}\".format(vertexColor[axis]) tempStr += \")\" vertexColorStr = tempStr cmds.textField(vertexColorField, e= True, text = vertexColorStr) def WriteToVertexColor(): print(\"Write To Vertex Color...\") selVertices = cmds.ls(selection = True) for vertex in selVertices: cmds.polyColorPerVertex(vertex, rgb=(pivotPosition[0], pivotPosition[1], pivotPosition[2])) def WriteToVertexTexcoord(): print(\"Write To Vertex Coord...\") pivotLayerValue = GetPivotLayer() allUVSets = cmds.polyUVSet( query=True, allUVSets=True ) uvSetCount = len(allUVSets) cmds.polyEditUV(relative = False, uValue = pivotPosition[0], vValue = pivotPosition[1]) #cmds.polyEditUV(relative = False, uValue = pivotPosition[2], vValue = pivotLayerValue) ui() 因为种种限制，使用时较为复杂，如果有更好的脚本的话，也很感谢分享出来告诉我。首先是要在UV集编辑器中，为模型新增两套UV，由于使用的MegaScans模型本身有两套不同的UV，操作是把原来的第二套UV移动到第四套UV中，然后把第一套UV复制到第二第三套UV中，然后在UV编辑器中定位当前UV到第二套UV。在脚本编辑器中打开或者复制上面的VertexPivotWriteTool.py，通过Crtl + Enter可以生成该脚本的一个窗口。然后执行下述操作：首先是将每个pivot的前两个坐标写到第二套UV中，对茎来说，其pivot是最底下的顶点，对叶片来说，其pivot是最接近茎的顶点，选中这个顶点然后点击Target Vertex，在窗口中可以看到这个顶点的物体空间的坐标；然后在UV编辑器选中该茎或者叶片的UV壳，点击Write to Vertex Texcoord，在UV编辑器中可以看到UV坍缩成了一个点（往往找不到）；对第二套UV中的所有的UV壳执行上述操作；然后将当前UV切换到第三套UV，同时注释掉脚本的第117行，取消注释脚本的第118行，然后输入Crtl + Enter重新生成一遍工具；这时我们将要把每个pivot的最后一个坐标和pivot的层级写到第三套UV中；对植被的每一片叶子和枝干，判断其pivot的层级（以现在使用的MegaScans模型为例，茎的层级是0，其他叶片的层级是1），在Pivot Layer中输入层级；然后重复判断层级，选择顶点，写入UV；最后最后，不要忘记把脚本还原成最开始的样子。这样就把每个顶点对应的pivot坐标写入到第二和第三套UV了！导出到Unity就可以了。\n如何计算拉伸较小的风的效果，并且计算对应的法线 首先来看这样一张图：\n这张图表现了在Bend Space中把红色的线段弯曲到绿色线段的算法，X轴是风的方向，可以看到风的强度越高，Radius的大小就越小。同时为了计算出正确的法线和切线，需要同样的计算出AxisX和AxisZ在Bend Space中的向量。使用这个算法，当模型处在Bend Space的Z轴上时，不会受到扭曲，当其X轴大于0时，会受到压缩，当X轴小于0时，会受到拉伸。同样的，这种算法可以推广到三维空间中，同时扭曲Y轴和Z轴，我特地写了一个C#脚本来对变换的结果进行可视化。\nWindDebugger.cs using UnityEngine; using Unity.Mathematics; public class WindDebugger : MonoBehaviour { public bool draw = true; public float debugRadius = 0.01f; public float debugLength = 0.2f; public Color pivotColor; public Color sphereColor; public float radius; public float3 originalPosition; private void DrawAxes(Color color, Vector3 pos, Vector3 tangent, Vector3 bitangent, Vector3 normal) { Gizmos.color = color; Gizmos.DrawSphere(pos, debugRadius); Gizmos.color = Color.red; Gizmos.DrawLine(pos, pos + tangent * debugLength); Gizmos.color = Color.green; Gizmos.DrawLine(pos, pos + bitangent * debugLength); Gizmos.color = Color.blue; Gizmos.DrawLine(pos, pos + normal * debugLength); } private float3 CircleTransform(float3 positionBS, float radius, out float3 axisX, out float3 axisY, out float3 axisZ) { float radVal = math.length(positionBS.xy) / radius; float sinVal = math.sin(radVal); float cosVal = math.cos(radVal); float2 normalizeDir = math.normalize(positionBS.xy); float3 targetPosBS = new float3((radius * sinVal) * normalizeDir, radius - radius * cosVal); float3 tempAxisX = new float3(-sinVal * normalizeDir, cosVal); float3 tempAxisY = new float3(normalizeDir.y, -normalizeDir.x, 0.0f); float3 tempAxisZ = new float3(cosVal * normalizeDir, sinVal); axisX = tempAxisX; axisY = normalizeDir.y * tempAxisY + normalizeDir.x * tempAxisZ; axisZ = -normalizeDir.x * tempAxisY + normalizeDir.y * tempAxisZ; float3 newPositionBS = targetPosBS + axisX * positionBS.z; return newPositionBS; } private void OnDrawGizmos() { if (!draw) { return; } Color originalColor = Gizmos.color; Gizmos.color = sphereColor; Gizmos.DrawSphere(new float3(0.0f, 0.0f, radius), radius); float3 axisX, axisY, axisZ; float3 newPosition = CircleTransform(originalPosition, radius, out axisX, out axisY, out axisZ); DrawAxes(pivotColor, newPosition, axisY, axisZ, axisX); DrawAxes(pivotColor, originalPosition, new float3(1.0f, 0.0f, 0.0f), new float3(0.0f, 1.0f, 0.0f), new float3(0.0f, 0.0f, 1.0f)); Gizmos.color = Color.black; Gizmos.DrawLine(float3.zero, originalPosition); Gizmos.color = Color.white; Gizmos.DrawLine(float3.zero, newPosition); Gizmos.color = originalColor; } } 其他的一些问题 由于整个计算过程中用到了很多的坐标变换，需要特别的注意每一次变换是从什么空间变换到什么空间。首先是物体空间到风的弯曲空间，由于我们CircleTransform方法是认为风是吹向X轴正方向的，所以需要先对所有的坐标、向量进行一个变换，由于只涉及到旋转，所以可以用一个float3x3的矩阵来表示从物体空间到弯曲空间的变换矩阵。\n然后分两种情况：一种是Pivot Layer为0的顶点，也就是所使用的模型的茎上的顶点。这种相对简单，将顶点在物体Bend Space中进行CircleTransform后，就能获得新的Bend Space的坐标和新的三个轴的向量（新的三个轴可以组合出顶点的Bend Space到物体的Bend Space的变换矩阵），可以计算出顶点、法线和切线在物体Bend Space的坐标和向量。最后再从物体Bend Space转换到物体空间就可以了。\n第二种是Pivot Layer为1的顶点，要先计算出Pivot的新的物体Bend Space坐标，然后在其基础上计算出每一个顶点相对于Pivot Bend Space的新的坐标，然后一层套一层的算回顶点及其法线切线在物体Bend Space的坐标。最后再从物体Bend Space转换到物体空间就可以了。值得一提的是，我在计算pivot的Bend Space时，所使用的空间和之前图上不太一样，是AxisZ, AxisY和-AxisX对应新的Bend Space的XYZ轴，这样能让垂直于枝干的叶片有更好的风吹的效果。\n至于随风飘动的频率，就随便找一个sin函数的组合就可以了。\n具体代码和相关的思考 顶点着色器就按照之前介绍的来做就可以了。由于较好看的植被都是双面渲染的，在Cull的参数里面选择Off。这样同样的会遇到一个问题，就是模型背面的法线和正面的法线是相同的，这里需要使用HLSL片元着色器的VFACE语义，来判断当前面是正面还是背面，如果是背面的话需要反转一下法线。这里写的Shader也同时写了阴影、深度图和烘焙所需要的pass。\nVertexAnimationPlantShader.shader Shader \"zznewclear13/VertexAnimationPlantShader\" { Properties { _BaseColor (\"Base Color\", color) = (1, 1, 1, 1) _BaseMap(\"Base Map\", 2D) = \"white\" {} _BumpMap (\"Bump Map\", 2D) = \"bump\" {} _BumpIntensity (\"Bump Intensity\", range(0, 1)) = 1 _RoughnessMap(\"Roughness Map\", 2D) = \"white\" {} _RoughnessIntensity (\"Roughness Intensity\", range(0, 1)) = 1 _MetallicMap (\"Metallic Map\", 2D) = \"black\" {} _MetallicIntensity (\"Metallic Intensity\", range(0, 1)) = 1 _WindDirection (\"Wind Direction\", vector) = (1.0, 0.0, 0.0, 0.0) _WindIntensity (\"Wind Intensity\", float) = 1 _WindVariety (\"Wind Variety\", range(0, 10)) = 0.5 _BranchDelay (\"Branch Delay\", range(0, 10)) = 2 _WindVarietyLeaves (\"Wind Variety Leaves\", range(0, 10)) = 1 _BranchDelayLeaves (\"Branch Delay Leaves\", range(0, 10)) = 3 _WindVaryFrequency (\"Wind Vary Frequency\", float) = 5 } HLSLINCLUDE #include \"Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl\" #include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl\" sampler2D _BaseMap; sampler2D _BumpMap; sampler2D _RoughnessMap; sampler2D _MetallicMap; CBUFFER_START(UnityPerMaterial) float4 _BaseColor; float4 _BaseMap_ST; float _BumpIntensity; float _RoughnessIntensity; float _MetallicIntensity; float4 _WindDirection; float _WindIntensity; float _WindVariety; float _BranchDelay; float _WindVarietyLeaves; float _BranchDelayLeaves; float _WindVaryFrequency; CBUFFER_END //Apply wind variety float GetVariety(float timeFunction) { return sin(timeFunction) + 0.25 * sin(timeFunction * 1.5) + 0.1 * sin(timeFunction * 0.33); } //CircleTransform transforms a current bend space point to a new position in bend space, //and output three axes of next bend space. //New position is in current bend space and ready for use. //Normal and tangent in current bend space can be calculated by axes. float3 CircleTransform(float3 positionBS, float windIntensity, out float3 axisX, out float3 axisY, out float3 axisZ) { float intensity = windIntensity; if(intensity == 0.0 || length(positionBS.yz) == 0.0) { axisX = float3(1.0, 0.0, 0.0); axisY = float3(0.0, 1.0, 0.0); axisZ = float3(0.0, 0.0, 1.0); return positionBS; } float radius = rcp(intensity); float radVal = length(positionBS.yz) * intensity; float sinVal = sin(radVal); float cosVal = cos(radVal); float2 normalizeDir = normalize(positionBS.yz); float3 targetPosBS = float3(radius - radius * cosVal, (radius * sinVal) * normalizeDir); float3 tempAxisX = float3(cosVal, -sinVal * normalizeDir); float3 tempAxisY = float3(0.0, normalizeDir.y, -normalizeDir.x); float3 tempAxisZ = float3(sinVal, cosVal * normalizeDir); axisX = tempAxisX; axisY = normalizeDir.y * tempAxisY + normalizeDir.x * tempAxisZ; axisZ = -normalizeDir.x * tempAxisY + normalizeDir.y * tempAxisZ; float3 newPositionBS = targetPosBS + axisX * positionBS.x; return newPositionBS; } //windDirection: object space, upVec: world upVec in object space void InitBendSpace(float3 windDirection, float3 upVec, out float3x3 objectToBend, out float3x3 bendToObject) { float3 u = windDirection; float3 v = normalize(cross(upVec, u)); float3 w = cross(u, v); //Object space to bend space objectToBend = float3x3(u, v, w); //Bend space to object space bendToObject = float3x3(u.x, v.x, w.x, u.y, v.y, w.y, u.z, v.z, w.z); } ENDHLSL SubShader { Tags{ \"RenderType\" = \"Transparent\" \"Queue\" = \"Transparent\"} Pass { Name \"ForwardLit\" Tags{\"LightMode\" = \"UniversalForward\"} Cull Off Blend SrcAlpha OneMinusSrcAlpha ZWrite On HLSLPROGRAM #include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl\" #pragma shader_feature_local _NORMALMAP #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN #pragma multi_compile _ LIGHTMAP_SHADOW_MIXING #pragma multi_compile _ SHADOWS_SHADOWMASK #pragma multi_compile_fragment _ _SHADOWS_SOFT #pragma multi_compile _ LIGHTMAP_ON #pragma vertex LitPassVert #pragma fragment LitPassFrag struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 texcoord0 : TEXCOORD0; float2 texcoord1 : TEXCOORD1; float2 texcoord2 : TEXCOORD2; float2 staticLightmapUV : TEXCOORD3; UNITY_VERTEX_INPUT_INSTANCE_ID }; struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; float3 positionWS : TEXCOORD1; float3 normalWS : TEXCOORD2; float4 tangentWS : TEXCOORD3; float4 shadowCoord : TEXCOORD4; DECLARE_LIGHTMAP_OR_SH(staticLightmapUV, vertexSH, 5); UNITY_VERTEX_INPUT_INSTANCE_ID UNITY_VERTEX_OUTPUT_STEREO }; ////////////////////////////////// //GGX BRDF and related functions// ////////////////////////////////// float D(float ndoth, float roughness) { float a = ndoth * roughness; float k = roughness / (1.0 - ndoth * ndoth + a * a); return k * k; } float G(float ndotl, float ndotv, float roughness) { float a2 = roughness * roughness; float gv = ndotv * sqrt((1.0 - a2) * ndotl * ndotl + a2); float gl = ndotl * sqrt((1.0 - a2) * ndotv * ndotv + a2); return 0.5 * rcp(gv + gl); } float3 F(float3 specular, float hdotl) { return specular + (1 - specular) * pow(1 - hdotl, 5); } float3 GGXBRDF(float3 wi, float3 wo, float3 normal, float3 specular, float roughness) { float3 h = normalize(wi + wo); float ndotv = max(dot(normal, wo), 1e-5); float ndoth = max(dot(normal, h), 0.0); float ndotl = max(dot(normal, wi), 0.0); float hdotl = max(dot(h, wi), 0.0); float d = D(ndoth, roughness); float g = G(ndotl, ndotv, roughness); float3 f = F(specular, hdotl); return d * g * f; } Varyings LitPassVert(Attributes input) { Varyings output = (Varyings)0; UNITY_SETUP_INSTANCE_ID(input); UNITY_TRANSFER_INSTANCE_ID(input, output); UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output); //Pivot positions are stored in TEXCOORD1.xy and TEXCOORD2.x. float3 pivotPosition = float3(input.texcoord1.xy, input.texcoord2.x) * 0.01; float3 pointOffset = input.positionOS.xyz - pivotPosition; //Initialize Bend Space. float3 windDirectionOS = mul((float3x3)UNITY_MATRIX_I_M, _WindDirection.xyz); float3 upVec = mul((float3x3)UNITY_MATRIX_I_M, float3(0.0, 1.0, 0.0)); windDirectionOS = normalize(windDirectionOS); upVec = normalize(upVec); float3x3 objectToBend, bendToObject; InitBendSpace(windDirectionOS, upVec, objectToBend, bendToObject); //Initialize vertex data, transform from object space to bend space. float3 pivotPositionBS = mul(objectToBend, pivotPosition); float3 pointOffsetBS = mul(objectToBend, pointOffset); float3 originalTangentBS = mul(objectToBend, input.tangentOS.xyz); float3 originalNormalBS = mul(objectToBend, input.normalOS); float3 windPointBS; float3 windTangentBS; float3 windNormalBS; //TEXCOORD2.y is used to check pivot layers. 0 is root layer. if(input.texcoord2.y  0.5) { ////////////////////////////////// //Calculate pivot root transform// ////////////////////////////////// //Get pivot wind intensity. float intensity = _WindIntensity; float magnitude = length(pivotPositionBS); intensity += _WindVariety * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelay); //Calculate new position bent by wind in bend space, //and save the transform matrix. float3 axisX, axisY, axisZ; float3 windPivotPositionBS = CircleTransform(pivotPositionBS, intensity, axisX, axisY, axisZ); float4x4 pivotBSToObjBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPivotPositionBS.x), float4(axisX.y, axisY.y, axisZ.y, windPivotPositionBS.y), float4(axisX.z, axisY.z, axisZ.z, windPivotPositionBS.z), float4(0.0, 0.0, 0.0, 1.0)); ///////////////////////////// //Calculate point transform// ///////////////////////////// //Switch axes, transform to next bend space (point bend space). pointOffsetBS = float3(pointOffsetBS.z, pointOffsetBS.y, -pointOffsetBS.x); //Get point wind intensity. intensity = abs(axisZ.x) * _WindIntensity;//_WindIntensityLeaves; magnitude = length(pointOffsetBS); intensity += _WindVarietyLeaves * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelayLeaves); //Calculate new position bent by wind in bend space, //and save the transform matrix from point bend space to pivot bend space. //This transform matrix can be used to calculate normal and tangent. float3 windPointPositionBS = CircleTransform(pointOffsetBS, intensity, axisX, axisY, axisZ); float4x4 pointBSToPivotBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPointPositionBS.x), float4(axisX.y, axisY.y, axisZ.y, windPointPositionBS.y), float4(axisX.z, axisY.z, axisZ.z, windPointPositionBS.z), float4(0.0, 0.0, 0.0, 1.0)); //Switch axes, transform to pivot bend space. windPointPositionBS = float3(-windPointPositionBS.z, windPointPositionBS.y, windPointPositionBS.x); //Calculate position, normal and tangent in pivot bend space. float3 windPointPS = windPointPositionBS; float3 windTangentPS = mul((float3x3)pointBSToPivotBS, originalTangentBS); float3 windNormalPS = mul((float3x3)pointBSToPivotBS, originalNormalBS); //Calculate position, normal and tangent in object bend space. windPointBS = mul(pivotBSToObjBS, float4(windPointPS, 1.0)).xyz; windTangentBS = mul((float3x3)pivotBSToObjBS, windTangentPS); windNormalBS = mul((float3x3)pivotBSToObjBS, windNormalPS); } else { ////////////////////////////////// //Calculate point transform only// ////////////////////////////////// //Get point wind intensity. float intensity = _WindIntensity; float magnitude = length(pointOffsetBS); intensity += _WindVariety * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelay); float3 axisX, axisY, axisZ; float3 windPointOffsetBS = CircleTransform(pointOffsetBS, intensity, axisX, axisY, axisZ); float4x4 pointBSToObjBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPointOffsetBS.x), float4(axisX.y, axisY.y, axisZ.y, windPointOffsetBS.y), float4(axisX.z, axisY.z, axisZ.z, windPointOffsetBS.z), float4(0.0, 0.0, 0.0, 1.0)); windPointBS = windPointOffsetBS + pivotPositionBS; windTangentBS = mul((float3x3)pointBSToObjBS, originalTangentBS); windNormalBS = mul((float3x3)pointBSToObjBS, originalNormalBS); } //Transform from bend space to object space float3 pivotPositionOS = mul(bendToObject, windPointBS); float3 pivotTangentOS = mul(bendToObject, windTangentBS); float3 pivotNormalOS = mul(bendToObject, windNormalBS); VertexPositionInputs vertexInput = GetVertexPositionInputs(pivotPositionOS); VertexNormalInputs normalInput = GetVertexNormalInputs(pivotNormalOS, float4(pivotTangentOS, input.tangentOS.w)); output.positionCS = vertexInput.positionCS; output.uv = TRANSFORM_TEX(input.texcoord0, _BaseMap); output.positionWS = vertexInput.positionWS; output.normalWS = normalInput.normalWS; output.tangentWS = float4(normalInput.tangentWS, input.tangentOS.w); output.shadowCoord = TransformWorldToShadowCoord(vertexInput.positionWS); OUTPUT_LIGHTMAP_UV(input.staticLightmapUV, unity_LightmapST, output.staticLightmapUV); OUTPUT_SH(normalInput.normalWS.xyz, output.vertexSH); output.normalWS = normalInput.normalWS; return output; } float4 LitPassFrag(Varyings input, float vFace : VFACE) : SV_TARGET { UNITY_SETUP_INSTANCE_ID(input); UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input); //wo float3 positionWS = input.positionWS; float3 viewDirWS = GetWorldSpaceNormalizeViewDir(positionWS); //wi float4 shadowCoord = TransformWorldToShadowCoord(positionWS); float4 shadowMask = SAMPLE_SHADOWMASK(input.staticLightmapUV); Light mainLight = GetMainLight(shadowCoord, positionWS, shadowMask); //normal float3 normalMap = UnpackNormal(tex2D(_BumpMap, input.uv)); normalMap.xy *= _BumpIntensity; float3 bitangentWS = cross(input.normalWS, input.tangentWS.xyz) * input.tangentWS.w; float3x3 tbn = float3x3(input.tangentWS.xyz, bitangentWS, input.normalWS); float3 normalWS = mul(normalMap, tbn); normalWS = normalize(input.normalWS); //If we are looking and back faces, revert the normal. normalWS = vFace  0.5 ? normalWS: -normalWS; //material properties float4 baseMap = tex2D(_BaseMap, input.uv) * _BaseColor; clip(baseMap.a - 0.5); float roughnessMap = tex2D(_RoughnessMap, input.uv).r; float roughness = max(roughnessMap * _RoughnessIntensity, 1e-2); float metallicMap = tex2D(_MetallicMap, input.uv).r; float metallic = metallicMap * _MetallicIntensity; float oneMinusReflectivity = kDieletricSpec.a * (1 - metallic); float reflectivity = 1.0 - oneMinusReflectivity; float3 diffuse = baseMap.rgb * oneMinusReflectivity; float3 specular = lerp(kDieletricSpec.rgb, baseMap.rgb, metallic); //gi float3 bakedGI = SAMPLE_GI(input.staticLightmapUV, input.vertexSH, normalWS); MixRealtimeAndBakedGI(mainLight, normalWS, bakedGI); float3 giDiffuse = bakedGI; float3 reflectVector = reflect(-viewDirWS, normalWS); float3 giSpecular = GlossyEnvironmentReflection(reflectVector, positionWS, roughness, 1.0); //directional lights float3 directDiffuse = diffuse; float3 directSpecular = GGXBRDF(mainLight.direction, viewDirWS, normalWS, specular, roughness); float ndotl = saturate(dot(mainLight.direction, normalWS)); float atten = mainLight.shadowAttenuation; //indirectional lights float3 indirectDiffse = giDiffuse * diffuse; float surfaceReduction = rcp(roughness * roughness + 1.0); float grazingTerm = saturate(1.0 - roughness + reflectivity); float ndotv = saturate(dot(normalWS, viewDirWS)); float fresnelTerm = pow(1.0 - ndotv, 5.0); float3 indirectSpecular = giSpecular * surfaceReduction * lerp(specular, grazingTerm, fresnelTerm); //final compose float3 directBRDF = (directDiffuse + directSpecular) * mainLight.color * atten * ndotl; float3 indirectBRDF = indirectDiffse + indirectSpecular; float3 finalColor = directBRDF + indirectBRDF; return float4(finalColor, baseMap.a); } ENDHLSL } Pass { Name \"ShadowCaster\" Tags{\"LightMode\" = \"ShadowCaster\"} HLSLPROGRAM #include \"Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl\" #include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl\" #pragma vertex ShadowPassVertex #pragma fragment ShadowPassFragment float3 _LightDirection; struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float4 tangentOS : TANGENT; float2 texcoord0 : TEXCOORD0; float2 texcoord1 : TEXCOORD1; float2 texcoord2 : TEXCOORD2; float4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID }; struct Varyings { float2 uv : TEXCOORD0; float4 positionCS : SV_POSITION; }; Varyings ShadowPassVertex(Attributes input) { Varyings output = (Varyings)0; UNITY_SETUP_INSTANCE_ID(input); UNITY_TRANSFER_INSTANCE_ID(input, output); UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output); float3 pivotPosition = float3(input.texcoord1.xy, input.texcoord2.x) * 0.01; float3 pointOffset = input.positionOS.xyz - pivotPosition; float3 windDirectionOS = mul((float3x3)UNITY_MATRIX_I_M, _WindDirection.xyz); float3 upVec = mul((float3x3)UNITY_MATRIX_I_M, float3(0.0, 1.0, 0.0)); windDirectionOS = normalize(windDirectionOS); upVec = normalize(upVec); float3x3 objectToBend, bendToObject; InitBendSpace(windDirectionOS, upVec, objectToBend, bendToObject); float3 pivotPositionBS = mul(objectToBend, pivotPosition); float3 pointOffsetBS = mul(objectToBend, pointOffset); float3 originalTangentBS = mul(objectToBend, input.tangentOS.xyz); float3 originalNormalBS = mul(objectToBend, input.normalOS); float3 windPointBS; float3 windTangentBS; float3 windNormalBS; if(input.texcoord2.y  0.5) { float intensity = _WindIntensity; float magnitude = length(pivotPositionBS); intensity += _WindVariety * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelay); float3 axisX, axisY, axisZ; float3 windPivotPositionBS = CircleTransform(pivotPositionBS, intensity, axisX, axisY, axisZ); float4x4 pivotBSToObjBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPivotPositionBS.x), float4(axisX.y, axisY.y, axisZ.y, windPivotPositionBS.y), float4(axisX.z, axisY.z, axisZ.z, windPivotPositionBS.z), float4(0.0, 0.0, 0.0, 1.0)); pointOffsetBS = float3(pointOffsetBS.z, pointOffsetBS.y, -pointOffsetBS.x); intensity = abs(axisZ.x) * _WindIntensity;//_WindIntensityLeaves; magnitude = length(pointOffsetBS); intensity += _WindVarietyLeaves * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelayLeaves); float3 windPointPositionBS = CircleTransform(pointOffsetBS, intensity, axisX, axisY, axisZ); float4x4 pointBSToPivotBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPointPositionBS.x), float4(axisX.y, axisY.y, axisZ.y, windPointPositionBS.y), float4(axisX.z, axisY.z, axisZ.z, windPointPositionBS.z), float4(0.0, 0.0, 0.0, 1.0)); windPointPositionBS = float3(-windPointPositionBS.z, windPointPositionBS.y, windPointPositionBS.x); float3 windPointPS = windPointPositionBS; float3 windTangentPS = mul((float3x3)pointBSToPivotBS, originalTangentBS); float3 windNormalPS = mul((float3x3)pointBSToPivotBS, originalNormalBS); windPointBS = mul(pivotBSToObjBS, float4(windPointPS, 1.0)).xyz; windTangentBS = mul((float3x3)pivotBSToObjBS, windTangentPS); windNormalBS = mul((float3x3)pivotBSToObjBS, windNormalPS); } else { float intensity = _WindIntensity; float magnitude = length(pointOffsetBS); intensity += _WindVariety * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelay); float3 axisX, axisY, axisZ; float3 windPointOffsetBS = CircleTransform(pointOffsetBS, intensity, axisX, axisY, axisZ); float4x4 pointBSToObjBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPointOffsetBS.x), float4(axisX.y, axisY.y, axisZ.y, windPointOffsetBS.y), float4(axisX.z, axisY.z, axisZ.z, windPointOffsetBS.z), float4(0.0, 0.0, 0.0, 1.0)); windPointBS = windPointOffsetBS + pivotPositionBS; windTangentBS = mul((float3x3)pointBSToObjBS, originalTangentBS); windNormalBS = mul((float3x3)pointBSToObjBS, originalNormalBS); } float3 pivotPositionOS = mul(bendToObject, windPointBS); float3 pivotTangentOS = mul(bendToObject, windTangentBS); float3 pivotNormalOS = mul(bendToObject, windNormalBS); VertexPositionInputs vertexInput = GetVertexPositionInputs(pivotPositionOS); VertexNormalInputs normalInput = GetVertexNormalInputs(pivotNormalOS, float4(pivotTangentOS, input.tangentOS.w)); output.uv = TRANSFORM_TEX(input.texcoord0, _BaseMap); output.positionCS = TransformWorldToHClip(ApplyShadowBias(vertexInput.positionWS, normalInput.normalWS, _LightDirection)); return output; } half4 ShadowPassFragment(Varyings input) : SV_TARGET { return 0.0; } ENDHLSL } Pass { Name \"DepthOnly\" Tags{\"LightMode\" = \"DepthOnly\"} HLSLPROGRAM #pragma vertex DepthOnlyVertex #pragma fragment DepthOnlyFragment struct Attributes { float4 positionOS : POSITION; float2 texcoord : TEXCOORD0; float4 color : COLOR; UNITY_VERTEX_INPUT_INSTANCE_ID }; struct Varyings { float2 uv : TEXCOORD0; float4 positionCS : SV_POSITION; UNITY_VERTEX_INPUT_INSTANCE_ID UNITY_VERTEX_OUTPUT_STEREO }; Varyings DepthOnlyVertex(Attributes input) { Varyings output = (Varyings)0; UNITY_SETUP_INSTANCE_ID(input); UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output); VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS); output.uv = input.texcoord; output.positionCS = vertexInput.positionCS; return output; } half4 DepthOnlyFragment(Varyings input) : SV_TARGET { return 0.0; } ENDHLSL } Pass { Name \"Meta\" Tags{\"LightMode\" = \"Meta\"} HLSLPROGRAM #include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/MetaInput.hlsl\" #pragma vertex MetaVertex #pragma fragment MetaFragment struct Attributes { float4 positionOS : POSITION; float3 normalOS : NORMAL; float2 uv0 : TEXCOORD0; float2 uv1 : TEXCOORD1; float2 uv2 : TEXCOORD2; }; struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; }; Varyings MetaVertex(Attributes input) { Varyings output; output.positionCS = MetaVertexPosition(input.positionOS, input.uv1, input.uv2, unity_LightmapST, unity_DynamicLightmapST); output.uv = TRANSFORM_TEX(input.uv0, _BaseMap); return output; } half4 MetaFragment(Varyings input) : SV_Target { //material properties float4 baseMap = tex2D(_BaseMap, input.uv); float roughnessMap = tex2D(_RoughnessMap, input.uv).r; float roughness = max(roughnessMap * _RoughnessIntensity, 1e-2); float metallicMap = tex2D(_MetallicMap, input.uv).r; float metallic = metallicMap * _MetallicIntensity; float oneMinusReflectivity = kDieletricSpec.a * (1 - metallic); float reflectivity = 1.0 - oneMinusReflectivity; float3 diffuse = baseMap.rgb * oneMinusReflectivity; float3 specular = lerp(kDieletricSpec.rgb, baseMap.rgb, metallic); MetaInput metaInput; metaInput.Albedo = diffuse; metaInput.SpecularColor = specular; metaInput.Emission = 0; return MetaFragment(metaInput); } ENDHLSL } } } 后续的思考 首先先讲好的方面，风吹动的效果确实十分自然，同样的计算出的正确的法线在PBR的渲染中也十分重要（顶点动画中正确的法线尤其不易！）。但是不足之处是矩阵运算过多了，不过矩阵运算全都在顶点着色器中，消耗也不是特别大。太多的矩阵运算也导致了这种算法的扩展性不是很好，如果想要有Pivot Layer为3的顶点，在目前的算法里面是没办法计算的，也不知道顽皮狗是怎么做的了。在模型的形状不是特别好的时候，比如一个quad来渲染草，或者是模型叶子歪歪扭扭的，会有比较大的变形。不过仔细设置每一个顶点的Pivot的话，应该还是能够解决一部分问题的，当然拙劣的Maya脚本又成了一个痛点。\n总的来说我还是比较满意的，也算是解决了一个比较复杂的问题，当然了，我对hugo能够支持gif图片更加满意！\n","wordCount":"2794","inLanguage":"en","image":"https://zznewclear13.github.io/posts/create-plant-swaying-in-wind-using-vertex-animation/posts/images/VertexAnimatedPlant.gif","datePublished":"2022-01-06T12:00:00+08:00","dateModified":"2022-01-06T12:00:00+08:00","author":{"@type":"Person","name":"zznewclear13"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://zznewclear13.github.io/posts/create-plant-swaying-in-wind-using-vertex-animation/"},"publisher":{"@type":"Organization","name":"ZZNEWCLEAR13","logo":{"@type":"ImageObject","url":"https://zznewclear13.github.io/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add('dark'):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove('dark'):window.matchMedia('(prefers-color-scheme: dark)').matches&&document.body.classList.add('dark')</script><noscript><style type=text/css>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:#1d1e20;--entry:#2e2e33;--primary:rgba(255, 255, 255, 0.84);--secondary:rgba(255, 255, 255, 0.56);--tertiary:rgba(255, 255, 255, 0.16);--content:rgba(255, 255, 255, 0.74);--hljs-bg:#2e2e33;--code-bg:#37383e;--border:#333}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><header class=header><nav class=nav><div class=logo><a href=https://zznewclear13.github.io/ accesskey=h title="ZZNEWCLEAR13 (Alt + H)"><img src=/apple-touch-icon.png alt=logo aria-label=logo height=35>ZZNEWCLEAR13</a>
+<span class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></span></div><ul id=menu><li><a href=https://zznewclear13.github.io/categories/ title=分类><span>分类</span></a></li><li><a href=https://zznewclear13.github.io/tags/ title=标签><span>标签</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://zznewclear13.github.io/>Home</a>&nbsp;»&nbsp;<a href=https://zznewclear13.github.io/posts/>Posts</a></div><h1 class=post-title>使用顶点动画制作随风飘动的植物</h1><div class=post-description>从Maya到Unity的一整套制作流程.</div><div class=post-meta>January 6, 2022&nbsp;·&nbsp;zznewclear13&nbsp;|&nbsp;<a href=https://github.com/zznewclear13/zznewclear13.com/blob/main/content/posts/create-plant-swaying-in-wind-using-vertex-animation.md rel="noopener noreferrer" target=_blank>编辑</a></div></header><figure class=entry-cover><img loading=lazy src=https://zznewclear13.github.io/posts/images/VertexAnimatedPlant.gif alt="Vertex Animated Plant Cover"><p>Vertex Animated Plant</p></figure><div class=toc><details open><summary accesskey=c title="(Alt + C)"><div class=details>使用顶点动画制作随风飘动的植物</div></summary><div class=inner><ul><li><a href=#%e5%8a%a8%e6%9c%ba%e5%92%8c%e6%83%b3%e8%a6%81%e5%ae%9e%e7%8e%b0%e7%9a%84%e6%95%88%e6%9e%9c aria-label=动机和想要实现的效果>动机和想要实现的效果</a></li><li><a href=#%e9%9a%be%e7%82%b9%e5%92%8c%e7%9b%b8%e5%af%b9%e5%ba%94%e7%9a%84%e5%ba%94%e5%af%b9%e6%96%b9%e6%b3%95 aria-label=难点和相对应的应对方法>难点和相对应的应对方法</a><ul><li><a href=#unity%e7%9a%84%e9%a1%b6%e7%82%b9%e8%89%b2%e9%99%90%e5%88%b6 aria-label=Unity的顶点色限制>Unity的顶点色限制</a><ul><li><a href=#vertexpivotwritetoolpy aria-label=VertexPivotWriteTool.py>VertexPivotWriteTool.py</a></li></ul></li><li><a href=#%e5%a6%82%e4%bd%95%e8%ae%a1%e7%ae%97%e6%8b%89%e4%bc%b8%e8%be%83%e5%b0%8f%e7%9a%84%e9%a3%8e%e7%9a%84%e6%95%88%e6%9e%9c%e5%b9%b6%e4%b8%94%e8%ae%a1%e7%ae%97%e5%af%b9%e5%ba%94%e7%9a%84%e6%b3%95%e7%ba%bf aria-label=如何计算拉伸较小的风的效果，并且计算对应的法线>如何计算拉伸较小的风的效果，并且计算对应的法线</a><ul><li><a href=#winddebuggercs aria-label=WindDebugger.cs>WindDebugger.cs</a></li></ul></li><li><a href=#%e5%85%b6%e4%bb%96%e7%9a%84%e4%b8%80%e4%ba%9b%e9%97%ae%e9%a2%98 aria-label=其他的一些问题>其他的一些问题</a></li></ul></li><li><a href=#%e5%85%b7%e4%bd%93%e4%bb%a3%e7%a0%81%e5%92%8c%e7%9b%b8%e5%85%b3%e7%9a%84%e6%80%9d%e8%80%83 aria-label=具体代码和相关的思考>具体代码和相关的思考</a><ul><li><a href=#vertexanimationplantshadershader aria-label=VertexAnimationPlantShader.shader>VertexAnimationPlantShader.shader</a></li></ul></li><li><a href=#%e5%90%8e%e7%bb%ad%e7%9a%84%e6%80%9d%e8%80%83 aria-label=后续的思考>后续的思考</a></li></ul></div></details></div><div class=post-content><h2 id=动机和想要实现的效果>动机和想要实现的效果<a hidden class=anchor aria-hidden=true href=#动机和想要实现的效果>#</a></h2><p>最直接的动机是看了顽皮狗在Siggraph 2016上的<a href=http://advances.realtimerendering.com/other/2016/naughty_dog/index.html>PPT</a>，里面介绍了顽皮狗在神秘海域中是如何让植被随风飘荡的。他们介绍了一种将植被的每一部分的pivot的物体空间坐标写到顶点色里，然后在shader中使用这个坐标进行风的效果的计算的方法。较为震撼在风吹过草原时，植被进行弯曲后，草表面的高光会有一种时空上的起伏感（也就是说神秘海域的植被的法线也会被风影响）。所以我也想要借助写pivot的方法来制作植被受到风吹的效果，通过这个方法计算出正确的风吹之后的植被的法线（同时由于法线贴图的存在，还要计算正确的切线）。</p><p>稍微翻了一下网上的资料（也没仔细地去搜索），大部分的就是一个普通的顶点动画，有的是用的sin，有的就直接平移。这就产生了第二个需求，植被在顶点动画中应该保持差不多的长度，不然会发现很明显的拉伸的效果。</p><p>当然最好还能投射出正常的影子了，这一步只需要把顶点着色器复制一份到投射影子的pass里就可以了。</p><p>这里使用的植被模型是MegaScans上的<a href="https://quixel.com/megascans/home?assetId=selnS">CORDYLINE</a>模型中的var12这个小模型。</p><h2 id=难点和相对应的应对方法>难点和相对应的应对方法<a hidden class=anchor aria-hidden=true href=#难点和相对应的应对方法>#</a></h2><h3 id=unity的顶点色限制>Unity的顶点色限制<a hidden class=anchor aria-hidden=true href=#unity的顶点色限制>#</a></h3><p>稍微测试一下就能发现，Unity的顶点色是<code>UNorm8</code>的格式，也就是说无论你在Maya或是3ds Max里导出的模型的顶点色信息是什么样的，导入到Unity中就会变成只有256精度的<code>UNorm8</code>。顽皮狗使用的是自己的引擎，所以它们能够使用全精度的顶点色，但是由于Unity的引擎限制，我们可以考虑到导出pivot的顶点坐标到模型的UV中。</p><p>但是很不幸的是，fbx导入到Unity时，即使UV是<code>float4</code>的类型（也就是32bytes)，在Unity中只会识别UV的前两位。所以只能无奈的将pivot的顶点坐标（<code>float3</code>的数据）储存到两个UV的三个通道里，同时将pivot的层级存到剩下的一个通道里。我不知道顽皮狗具体是怎么计算pivot的层级关系的，他在PPT中写的是无需计算，但我在实际操作中只能一层一层的算（而且只能算两层），也希望知道具体怎么操作的人告知一下方法。</p><p>所以接下来要做的是在Maya中把pivot的物体空间坐标和pivot的层级写到对应顶点的某两套UV中，本文是写到第二套和第三套UV中（也就是<code>TEXCOORD1</code>和<code>TEXCOORD2</code>）。于是我恶补了一下maya的python脚本的写法，不过在写数值到UV中时，又遇到了一个小问题。Maya的<code>cmds.polyEditUV</code>这个方法，明明能传入<code>uvSetName</code>这个参数，用于操作对应的UV，但我实际使用时只能写数值到当前的UV中，导致最后写的脚本只能僵硬的操作当前UV，每次切换UV时需要重新修改脚本再运行一次。</p><p>最终的脚本是这样的：</p><h4 id=vertexpivotwritetoolpy>VertexPivotWriteTool.py<a hidden class=anchor aria-hidden=true href=#vertexpivotwritetoolpy>#</a></h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-Python data-lang=Python><span style=color:#f92672>import</span> maya.cmds <span style=color:#f92672>as</span> cmds
+
+targetVertexStr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;Select any vertex to start.&#34;</span>
+vertexColorStr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;Select any vertex to start.&#34;</span>
+pivotPosition <span style=color:#f92672>=</span> [<span style=color:#ae81ff>0.0</span>, <span style=color:#ae81ff>0.0</span>, <span style=color:#ae81ff>0.0</span>]
+
+<span style=color:#66d9ef>def</span> <span style=color:#a6e22e>ui</span>():
+    <span style=color:#66d9ef>if</span> cmds<span style=color:#f92672>.</span>window(<span style=color:#e6db74>&#34;VertexPivotWriteTool&#34;</span>, exists <span style=color:#f92672>=</span> True):
+        cmds<span style=color:#f92672>.</span>deleteUI(<span style=color:#e6db74>&#34;VertexPivotWriteTool&#34;</span>)
+
+    <span style=color:#66d9ef>global</span> targetVertexStr
+    <span style=color:#66d9ef>global</span> targetVertexField
+    <span style=color:#66d9ef>global</span> vertexColorStr
+    <span style=color:#66d9ef>global</span> vertexColorField
+    <span style=color:#66d9ef>global</span> pivotLayer
+
+    vertexPivotWindow <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>window(<span style=color:#e6db74>&#34;VertexPivotWriteTool&#34;</span>, widthHeight <span style=color:#f92672>=</span> [<span style=color:#ae81ff>500</span>, <span style=color:#ae81ff>400</span>])
+    form <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>formLayout(numberOfDivisions <span style=color:#f92672>=</span> <span style=color:#ae81ff>100</span>)
+
+    pivotLayerLable <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>text(<span style=color:#e6db74>&#34;Pivot Layer (0 for root pivot)&#34;</span>)
+    pivotLayer <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>intField()
+    cmds<span style=color:#f92672>.</span>intField(pivotLayer, e <span style=color:#f92672>=</span> True, minValue <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>, maxValue <span style=color:#f92672>=</span> <span style=color:#ae81ff>5</span>, step <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>, value <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>)
+
+    targetVertexButton <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>button(<span style=color:#e6db74>&#34;Target Vertex&#34;</span>, command <span style=color:#f92672>=</span> <span style=color:#e6db74>&#39;GetTargetVertex()&#39;</span>)
+    targetVertexField <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>textField(text<span style=color:#f92672>=</span>targetVertexStr, width <span style=color:#f92672>=</span> <span style=color:#ae81ff>300</span>)
+    <span style=color:#75715e>#writeVertexButton = cmds.button(&#34;Write to Vertex Color&#34;, command = &#39;WriteToVertexColor()&#39;)</span>
+    writeVertexButton <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>button(<span style=color:#e6db74>&#34;Write to Vertex Texcoord&#34;</span>, command <span style=color:#f92672>=</span> <span style=color:#e6db74>&#39;WriteToVertexTexcoord()&#39;</span>)
+    
+    targetVertexColorButton <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>button(<span style=color:#e6db74>&#34;Show Vertex Color&#34;</span>, command <span style=color:#f92672>=</span> <span style=color:#e6db74>&#39;GetTargetVertexColor()&#39;</span>)
+    vertexColorField <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>textField(text<span style=color:#f92672>=</span>vertexColorStr, width <span style=color:#f92672>=</span> <span style=color:#ae81ff>300</span>)
+    
+    cmds<span style=color:#f92672>.</span>showWindow(vertexPivotWindow)
+    cmds<span style=color:#f92672>.</span>formLayout(form, e<span style=color:#f92672>=</span>True, attachForm <span style=color:#f92672>=</span> (
+    
+        [pivotLayerLable, <span style=color:#e6db74>&#39;left&#39;</span>, <span style=color:#ae81ff>25</span>],
+        [pivotLayerLable, <span style=color:#e6db74>&#39;top&#39;</span>, <span style=color:#ae81ff>20</span>],
+        [pivotLayer, <span style=color:#e6db74>&#39;right&#39;</span>, <span style=color:#ae81ff>25</span>],
+        [pivotLayer, <span style=color:#e6db74>&#39;top&#39;</span>, <span style=color:#ae81ff>20</span>],
+    
+        [targetVertexButton, <span style=color:#e6db74>&#39;left&#39;</span>, <span style=color:#ae81ff>25</span>],
+        [targetVertexButton, <span style=color:#e6db74>&#39;top&#39;</span>, <span style=color:#ae81ff>60</span>],
+        [targetVertexField, <span style=color:#e6db74>&#39;right&#39;</span>, <span style=color:#ae81ff>25</span>],
+        [targetVertexField, <span style=color:#e6db74>&#39;top&#39;</span>, <span style=color:#ae81ff>60</span>],
+
+        [writeVertexButton, <span style=color:#e6db74>&#39;left&#39;</span>, <span style=color:#ae81ff>25</span>],
+        [writeVertexButton, <span style=color:#e6db74>&#39;top&#39;</span>, <span style=color:#ae81ff>100</span>],
+
+        [targetVertexColorButton, <span style=color:#e6db74>&#39;left&#39;</span>, <span style=color:#ae81ff>25</span>],
+        [targetVertexColorButton, <span style=color:#e6db74>&#39;bottom&#39;</span>, <span style=color:#ae81ff>20</span>],
+        [vertexColorField, <span style=color:#e6db74>&#39;right&#39;</span>, <span style=color:#ae81ff>25</span>],
+        [vertexColorField, <span style=color:#e6db74>&#39;bottom&#39;</span>, <span style=color:#ae81ff>20</span>],
+        
+    ))
+
+<span style=color:#66d9ef>def</span> <span style=color:#a6e22e>GetPivotLayer</span>():
+    value <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>intField(pivotLayer, q<span style=color:#f92672>=</span>True, value<span style=color:#f92672>=</span>True)
+    <span style=color:#66d9ef>print</span>(<span style=color:#e6db74>&#34;pivotLayerValue is: &#34;</span> <span style=color:#f92672>+</span> str(value))
+    <span style=color:#66d9ef>return</span> value
+    
+
+<span style=color:#66d9ef>def</span> <span style=color:#a6e22e>GetTargetVertex</span>():
+    <span style=color:#66d9ef>print</span>(<span style=color:#e6db74>&#34;Get Target Vertex...&#34;</span>)
+    selVertices <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>ls(selection <span style=color:#f92672>=</span> True)
+
+    <span style=color:#66d9ef>global</span> targetVertexStr
+    <span style=color:#66d9ef>global</span> pivotPosition
+
+    <span style=color:#66d9ef>if</span> len(selVertices) <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>:
+        targetVertexStr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;No vetex selected!&#34;</span>
+    <span style=color:#66d9ef>elif</span> len(selVertices) <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>2</span>:
+        targetVertexStr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;Too many vertices selected! Expected 1, got &#34;</span> <span style=color:#f92672>+</span> str(len(selVertices))
+    <span style=color:#66d9ef>else</span>:
+        pivotPosition <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>pointPosition(selVertices[<span style=color:#ae81ff>0</span>])
+        tempStr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;(&#34;</span>
+        <span style=color:#66d9ef>for</span> axis <span style=color:#f92672>in</span> range(len(pivotPosition)):
+            <span style=color:#66d9ef>if</span> axis <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>1</span>:
+                tempStr <span style=color:#f92672>+=</span> <span style=color:#e6db74>&#34;, &#34;</span>
+            tempStr <span style=color:#f92672>+=</span> <span style=color:#e6db74>&#34;{:.2f}&#34;</span><span style=color:#f92672>.</span>format(pivotPosition[axis])
+        tempStr <span style=color:#f92672>+=</span> <span style=color:#e6db74>&#34;)&#34;</span>    
+        targetVertexStr <span style=color:#f92672>=</span> tempStr
+    
+    cmds<span style=color:#f92672>.</span>textField(targetVertexField, e<span style=color:#f92672>=</span> True, text <span style=color:#f92672>=</span> targetVertexStr)
+
+<span style=color:#66d9ef>def</span> <span style=color:#a6e22e>GetTargetVertexColor</span>():
+    <span style=color:#66d9ef>print</span>(<span style=color:#e6db74>&#34;Get Target Vertex...&#34;</span>)
+    selVertices <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>ls(selection <span style=color:#f92672>=</span> True)
+
+    <span style=color:#66d9ef>global</span> vertexColorStr
+
+    <span style=color:#66d9ef>if</span> len(selVertices) <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>:
+        vertexColorStr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;No vetex selected!&#34;</span>
+    <span style=color:#66d9ef>elif</span> len(selVertices) <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>2</span>:
+        vertexColorStr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;Too many vertices selected! Expected 1, got &#34;</span> <span style=color:#f92672>+</span> str(len(selVertices))
+    <span style=color:#66d9ef>else</span>:
+        vertexColor <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>polyColorPerVertex(query<span style=color:#f92672>=</span>True, rgb<span style=color:#f92672>=</span>True)
+        tempStr <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;(&#34;</span>
+        <span style=color:#66d9ef>for</span> axis <span style=color:#f92672>in</span> range(len(vertexColor)):
+            <span style=color:#66d9ef>if</span> axis <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>1</span>:
+                tempStr <span style=color:#f92672>+=</span> <span style=color:#e6db74>&#34;, &#34;</span>                
+            tempStr <span style=color:#f92672>+=</span> <span style=color:#e6db74>&#34;{:.2f}&#34;</span><span style=color:#f92672>.</span>format(vertexColor[axis])
+        tempStr <span style=color:#f92672>+=</span> <span style=color:#e6db74>&#34;)&#34;</span>    
+        vertexColorStr <span style=color:#f92672>=</span> tempStr
+    
+    cmds<span style=color:#f92672>.</span>textField(vertexColorField, e<span style=color:#f92672>=</span> True, text <span style=color:#f92672>=</span> vertexColorStr)
+
+<span style=color:#66d9ef>def</span> <span style=color:#a6e22e>WriteToVertexColor</span>():
+    <span style=color:#66d9ef>print</span>(<span style=color:#e6db74>&#34;Write To Vertex Color...&#34;</span>)
+    selVertices <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>ls(selection <span style=color:#f92672>=</span> True)
+    <span style=color:#66d9ef>for</span> vertex <span style=color:#f92672>in</span> selVertices:
+        cmds<span style=color:#f92672>.</span>polyColorPerVertex(vertex, rgb<span style=color:#f92672>=</span>(pivotPosition[<span style=color:#ae81ff>0</span>], pivotPosition[<span style=color:#ae81ff>1</span>], pivotPosition[<span style=color:#ae81ff>2</span>]))
+
+<span style=color:#66d9ef>def</span> <span style=color:#a6e22e>WriteToVertexTexcoord</span>():
+    <span style=color:#66d9ef>print</span>(<span style=color:#e6db74>&#34;Write To Vertex Coord...&#34;</span>)
+    pivotLayerValue <span style=color:#f92672>=</span> GetPivotLayer()
+    allUVSets <span style=color:#f92672>=</span> cmds<span style=color:#f92672>.</span>polyUVSet( query<span style=color:#f92672>=</span>True, allUVSets<span style=color:#f92672>=</span>True )
+    uvSetCount <span style=color:#f92672>=</span> len(allUVSets)
+    cmds<span style=color:#f92672>.</span>polyEditUV(relative <span style=color:#f92672>=</span> False, uValue <span style=color:#f92672>=</span> pivotPosition[<span style=color:#ae81ff>0</span>], vValue <span style=color:#f92672>=</span> pivotPosition[<span style=color:#ae81ff>1</span>])
+    <span style=color:#75715e>#cmds.polyEditUV(relative = False, uValue = pivotPosition[2], vValue = pivotLayerValue)</span>
+
+ui()
+</code></pre></div><p><img loading=lazy src=../images/VertexPivotWriteTool.jpg#center alt="Vertex Pivot Write Tool"></p><p>因为种种限制，使用时较为复杂，如果有更好的脚本的话，也很感谢分享出来告诉我。首先是要在<code>UV集编辑器</code>中，为模型新增两套UV，由于使用的MegaScans模型本身有两套不同的UV，操作是把原来的第二套UV移动到第四套UV中，然后把第一套UV复制到第二第三套UV中，然后在<code>UV编辑器</code>中定位当前UV到第二套UV。在脚本编辑器中打开或者复制上面的<code>VertexPivotWriteTool.py</code>，通过<code>Crtl + Enter</code>可以生成该脚本的一个窗口。然后执行下述操作：首先是将每个pivot的前两个坐标写到第二套UV中，对茎来说，其pivot是最底下的顶点，对叶片来说，其pivot是最接近茎的顶点，选中这个顶点然后点击<code>Target Vertex</code>，在窗口中可以看到这个顶点的物体空间的坐标；然后在<code>UV编辑器</code>选中该茎或者叶片的UV壳，点击<code>Write to Vertex Texcoord</code>，在<code>UV编辑器</code>中可以看到UV坍缩成了一个点（往往找不到）；对第二套UV中的所有的UV壳执行上述操作；然后将当前UV切换到第三套UV，同时注释掉脚本的第117行，取消注释脚本的第118行，然后输入<code>Crtl + Enter</code>重新生成一遍工具；这时我们将要把每个pivot的最后一个坐标和pivot的层级写到第三套UV中；对植被的每一片叶子和枝干，判断其pivot的层级（以现在使用的MegaScans模型为例，茎的层级是0，其他叶片的层级是1），在Pivot Layer中输入层级；然后重复判断层级，选择顶点，写入UV；最后最后，不要忘记把脚本还原成最开始的样子。这样就把每个顶点对应的pivot坐标写入到第二和第三套UV了！导出到Unity就可以了。</p><h3 id=如何计算拉伸较小的风的效果并且计算对应的法线>如何计算拉伸较小的风的效果，并且计算对应的法线<a hidden class=anchor aria-hidden=true href=#如何计算拉伸较小的风的效果并且计算对应的法线>#</a></h3><p>首先来看这样一张图：</p><p><img loading=lazy src=../images/CircleTransformDiagram.jpg#center alt="Circle Transform Diagram"></p><p>这张图表现了在Bend Space中把红色的线段弯曲到绿色线段的算法，X轴是风的方向，可以看到风的强度越高，Radius的大小就越小。同时为了计算出正确的法线和切线，需要同样的计算出AxisX和AxisZ在Bend Space中的向量。使用这个算法，当模型处在Bend Space的Z轴上时，不会受到扭曲，当其X轴大于0时，会受到压缩，当X轴小于0时，会受到拉伸。同样的，这种算法可以推广到三维空间中，同时扭曲Y轴和Z轴，我特地写了一个C#脚本来对变换的结果进行可视化。</p><h4 id=winddebuggercs>WindDebugger.cs<a hidden class=anchor aria-hidden=true href=#winddebuggercs>#</a></h4><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C# data-lang=C#><span style=color:#66d9ef>using</span> UnityEngine;
+<span style=color:#66d9ef>using</span> Unity.Mathematics;
+
+<span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>WindDebugger</span> : MonoBehaviour
+{
+    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>bool</span> draw = <span style=color:#66d9ef>true</span>;
+
+    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>float</span> debugRadius = <span style=color:#ae81ff>0.01f</span>;
+    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>float</span> debugLength = <span style=color:#ae81ff>0.2f</span>;
+
+    <span style=color:#66d9ef>public</span> Color pivotColor;
+    <span style=color:#66d9ef>public</span> Color sphereColor;
+    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>float</span> radius;
+    <span style=color:#66d9ef>public</span> float3 originalPosition;
+
+    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> DrawAxes(Color color, Vector3 pos, Vector3 tangent, Vector3 bitangent, Vector3 normal)
+    {
+        Gizmos.color = color;
+        Gizmos.DrawSphere(pos, debugRadius);
+        Gizmos.color = Color.red;
+        Gizmos.DrawLine(pos, pos + tangent * debugLength);
+        Gizmos.color = Color.green;
+        Gizmos.DrawLine(pos, pos + bitangent * debugLength);
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(pos, pos + normal * debugLength);
+    }
+
+    <span style=color:#66d9ef>private</span> float3 CircleTransform(float3 positionBS, <span style=color:#66d9ef>float</span> radius, <span style=color:#66d9ef>out</span> float3 axisX, <span style=color:#66d9ef>out</span> float3 axisY, <span style=color:#66d9ef>out</span> float3 axisZ)
+    {
+        <span style=color:#66d9ef>float</span> radVal = math.length(positionBS.xy) / radius;
+        <span style=color:#66d9ef>float</span> sinVal = math.sin(radVal);
+        <span style=color:#66d9ef>float</span> cosVal = math.cos(radVal);
+        float2 normalizeDir = math.normalize(positionBS.xy);
+
+        float3 targetPosBS = <span style=color:#66d9ef>new</span> float3((radius * sinVal) * normalizeDir, radius - radius * cosVal);
+
+        float3 tempAxisX = <span style=color:#66d9ef>new</span> float3(-sinVal * normalizeDir, cosVal);
+        float3 tempAxisY = <span style=color:#66d9ef>new</span> float3(normalizeDir.y, -normalizeDir.x, <span style=color:#ae81ff>0.0f</span>);
+        float3 tempAxisZ = <span style=color:#66d9ef>new</span> float3(cosVal * normalizeDir, sinVal);
+
+        axisX = tempAxisX;
+        axisY = normalizeDir.y * tempAxisY + normalizeDir.x * tempAxisZ;
+        axisZ = -normalizeDir.x * tempAxisY + normalizeDir.y * tempAxisZ;
+
+        float3 newPositionBS = targetPosBS + axisX * positionBS.z;
+        <span style=color:#66d9ef>return</span> newPositionBS;
+    }
+
+    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> OnDrawGizmos()
+    {
+        <span style=color:#66d9ef>if</span> (!draw)
+        {
+            <span style=color:#66d9ef>return</span>;
+        }
+
+        Color originalColor = Gizmos.color;
+        Gizmos.color = sphereColor;
+        Gizmos.DrawSphere(<span style=color:#66d9ef>new</span> float3(<span style=color:#ae81ff>0.0f</span>, <span style=color:#ae81ff>0.0f</span>, radius), radius);
+
+        float3 axisX, axisY, axisZ;
+        float3 newPosition = CircleTransform(originalPosition, radius, <span style=color:#66d9ef>out</span> axisX, <span style=color:#66d9ef>out</span> axisY, <span style=color:#66d9ef>out</span> axisZ);
+        DrawAxes(pivotColor, newPosition, axisY, axisZ, axisX);
+
+        DrawAxes(pivotColor, originalPosition, <span style=color:#66d9ef>new</span> float3(<span style=color:#ae81ff>1.0f</span>, <span style=color:#ae81ff>0.0f</span>, <span style=color:#ae81ff>0.0f</span>), <span style=color:#66d9ef>new</span> float3(<span style=color:#ae81ff>0.0f</span>, <span style=color:#ae81ff>1.0f</span>, <span style=color:#ae81ff>0.0f</span>), <span style=color:#66d9ef>new</span> float3(<span style=color:#ae81ff>0.0f</span>, <span style=color:#ae81ff>0.0f</span>, <span style=color:#ae81ff>1.0f</span>));
+
+        Gizmos.color = Color.black;
+        Gizmos.DrawLine(float3.zero, originalPosition);
+        Gizmos.color = Color.white;
+        Gizmos.DrawLine(float3.zero, newPosition);
+
+        Gizmos.color = originalColor;
+    }
+}
+</code></pre></div><h3 id=其他的一些问题>其他的一些问题<a hidden class=anchor aria-hidden=true href=#其他的一些问题>#</a></h3><p>由于整个计算过程中用到了很多的坐标变换，需要特别的注意每一次变换是从什么空间变换到什么空间。首先是物体空间到风的弯曲空间，由于我们<code>CircleTransform</code>方法是认为风是吹向X轴正方向的，所以需要先对所有的坐标、向量进行一个变换，由于只涉及到旋转，所以可以用一个<code>float3x3</code>的矩阵来表示从物体空间到弯曲空间的变换矩阵。</p><p>然后分两种情况：一种是Pivot Layer为0的顶点，也就是所使用的模型的茎上的顶点。这种相对简单，将顶点在物体Bend Space中进行<code>CircleTransform</code>后，就能获得新的Bend Space的坐标和新的三个轴的向量（新的三个轴可以组合出顶点的Bend Space到物体的Bend Space的变换矩阵），可以计算出顶点、法线和切线在物体Bend Space的坐标和向量。最后再从物体Bend Space转换到物体空间就可以了。</p><p>第二种是Pivot Layer为1的顶点，要先计算出Pivot的新的物体Bend Space坐标，然后在其基础上计算出每一个顶点相对于Pivot Bend Space的新的坐标，然后一层套一层的算回顶点及其法线切线在物体Bend Space的坐标。最后再从物体Bend Space转换到物体空间就可以了。值得一提的是，我在计算pivot的Bend Space时，所使用的空间和之前图上不太一样，是<code>AxisZ, AxisY和-AxisX</code>对应新的Bend Space的XYZ轴，这样能让垂直于枝干的叶片有更好的风吹的效果。</p><p>至于随风飘动的频率，就随便找一个sin函数的组合就可以了。</p><h2 id=具体代码和相关的思考>具体代码和相关的思考<a hidden class=anchor aria-hidden=true href=#具体代码和相关的思考>#</a></h2><p>顶点着色器就按照之前介绍的来做就可以了。由于较好看的植被都是双面渲染的，在Cull的参数里面选择Off。这样同样的会遇到一个问题，就是模型背面的法线和正面的法线是相同的，这里需要使用HLSL片元着色器的<code>VFACE</code>语义，来判断当前面是正面还是背面，如果是背面的话需要反转一下法线。这里写的Shader也同时写了阴影、深度图和烘焙所需要的pass。</p><h3 id=vertexanimationplantshadershader>VertexAnimationPlantShader.shader<a hidden class=anchor aria-hidden=true href=#vertexanimationplantshadershader>#</a></h3><pre><code class=language-HLSL data-lang=HLSL>Shader &quot;zznewclear13/VertexAnimationPlantShader&quot;
+{
+    Properties
+    {
+        _BaseColor (&quot;Base Color&quot;, color) = (1, 1, 1, 1)
+        _BaseMap(&quot;Base Map&quot;, 2D) = &quot;white&quot; {}
+
+        _BumpMap (&quot;Bump Map&quot;, 2D) = &quot;bump&quot; {}
+        _BumpIntensity (&quot;Bump Intensity&quot;, range(0, 1)) = 1
+        _RoughnessMap(&quot;Roughness Map&quot;, 2D) = &quot;white&quot; {}
+        _RoughnessIntensity (&quot;Roughness Intensity&quot;, range(0, 1)) = 1
+        _MetallicMap (&quot;Metallic Map&quot;, 2D) = &quot;black&quot; {}
+        _MetallicIntensity (&quot;Metallic Intensity&quot;, range(0, 1)) = 1
+
+        _WindDirection (&quot;Wind Direction&quot;, vector) = (1.0, 0.0, 0.0, 0.0)
+        _WindIntensity (&quot;Wind Intensity&quot;, float) = 1
+        _WindVariety (&quot;Wind Variety&quot;, range(0, 10)) = 0.5
+        _BranchDelay (&quot;Branch Delay&quot;, range(0, 10)) = 2
+
+        _WindVarietyLeaves (&quot;Wind Variety Leaves&quot;, range(0, 10)) = 1
+        _BranchDelayLeaves (&quot;Branch Delay Leaves&quot;, range(0, 10)) = 3
+
+        _WindVaryFrequency (&quot;Wind Vary Frequency&quot;, float) = 5
+    }
+
+    HLSLINCLUDE
+    #include &quot;Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl&quot;
+    #include &quot;Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl&quot;
+    
+    sampler2D _BaseMap;
+    sampler2D _BumpMap;
+    sampler2D _RoughnessMap;
+    sampler2D _MetallicMap;
+    CBUFFER_START(UnityPerMaterial)
+    float4 _BaseColor;
+    float4 _BaseMap_ST;
+    float _BumpIntensity;
+    float _RoughnessIntensity;
+    float _MetallicIntensity;
+
+    float4 _WindDirection;
+    float _WindIntensity;
+    float _WindVariety;
+    float _BranchDelay;
+    float _WindVarietyLeaves;
+    float _BranchDelayLeaves;
+    float _WindVaryFrequency;
+    CBUFFER_END
+
+    //Apply wind variety
+    float GetVariety(float timeFunction)
+    {
+        return sin(timeFunction) + 0.25 * sin(timeFunction * 1.5) + 0.1 * sin(timeFunction * 0.33);
+    }
+
+    //CircleTransform transforms a current bend space point to a new position in bend space,
+    //and output three axes of next bend space.
+    //New position is in current bend space and ready for use.
+    //Normal and tangent in current bend space can be calculated by axes.
+    float3 CircleTransform(float3 positionBS, float windIntensity, out float3 axisX, out float3 axisY, out float3 axisZ)
+    {
+        float intensity = windIntensity;
+
+        if(intensity == 0.0 || length(positionBS.yz) == 0.0)
+        {
+            axisX = float3(1.0, 0.0, 0.0);
+            axisY = float3(0.0, 1.0, 0.0);
+            axisZ = float3(0.0, 0.0, 1.0);
+
+            return positionBS;
+        }
+
+        float radius = rcp(intensity);
+        float radVal = length(positionBS.yz) * intensity;
+        float sinVal = sin(radVal);
+        float cosVal = cos(radVal);
+        float2 normalizeDir = normalize(positionBS.yz);
+
+        float3 targetPosBS = float3(radius - radius * cosVal, (radius * sinVal) * normalizeDir);
+
+        float3 tempAxisX = float3(cosVal, -sinVal * normalizeDir);
+        float3 tempAxisY = float3(0.0, normalizeDir.y, -normalizeDir.x);
+        float3 tempAxisZ = float3(sinVal, cosVal * normalizeDir);
+
+        axisX = tempAxisX;
+        axisY = normalizeDir.y * tempAxisY + normalizeDir.x * tempAxisZ;
+        axisZ = -normalizeDir.x * tempAxisY + normalizeDir.y * tempAxisZ;
+
+        float3 newPositionBS = targetPosBS + axisX * positionBS.x;
+        return newPositionBS;
+    }
+
+    //windDirection: object space, upVec: world upVec in object space
+    void InitBendSpace(float3 windDirection, float3 upVec, out float3x3 objectToBend, out float3x3 bendToObject)
+    {
+        float3 u = windDirection;
+        float3 v = normalize(cross(upVec, u));
+        float3 w = cross(u, v);
+        //Object space to bend space       
+        objectToBend = float3x3(u, v, w);
+        //Bend space to object space
+        bendToObject =  float3x3(u.x, v.x, w.x, u.y, v.y, w.y, u.z, v.z, w.z);
+    }
+
+    ENDHLSL
+
+    SubShader
+    {
+        Tags{ &quot;RenderType&quot; = &quot;Transparent&quot; &quot;Queue&quot; = &quot;Transparent&quot;}
+
+        Pass
+        {
+            Name &quot;ForwardLit&quot;
+            Tags{&quot;LightMode&quot; = &quot;UniversalForward&quot;}
+
+            Cull Off
+            Blend SrcAlpha OneMinusSrcAlpha
+            ZWrite On
+
+            HLSLPROGRAM
+            #include &quot;Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl&quot;
+
+            #pragma shader_feature_local _NORMALMAP
+
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
+            #pragma multi_compile _ LIGHTMAP_SHADOW_MIXING
+            #pragma multi_compile _ SHADOWS_SHADOWMASK       
+            #pragma multi_compile_fragment _ _SHADOWS_SOFT
+
+            #pragma multi_compile _ LIGHTMAP_ON
+
+            #pragma vertex LitPassVert
+            #pragma fragment LitPassFrag
+
+            struct Attributes
+            {
+                float4 positionOS           : POSITION;
+                float3 normalOS             : NORMAL;
+                float4 tangentOS            : TANGENT;
+                float2 texcoord0            : TEXCOORD0;
+                float2 texcoord1            : TEXCOORD1;
+                float2 texcoord2            : TEXCOORD2;
+                float2 staticLightmapUV     : TEXCOORD3;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct Varyings
+            {
+                float4 positionCS               : SV_POSITION;
+                float2 uv                       : TEXCOORD0;
+                float3 positionWS               : TEXCOORD1;
+                float3 normalWS                 : TEXCOORD2;
+                float4 tangentWS                : TEXCOORD3;
+                float4 shadowCoord              : TEXCOORD4;
+                DECLARE_LIGHTMAP_OR_SH(staticLightmapUV, vertexSH, 5);
+
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
+
+            //////////////////////////////////
+            //GGX BRDF and related functions//
+            //////////////////////////////////
+            float D(float ndoth, float roughness)
+            {
+                float a = ndoth * roughness;
+                float k = roughness / (1.0 - ndoth * ndoth + a * a);
+                return k * k;
+            }
+
+            float G(float ndotl, float ndotv, float roughness)
+            {
+                float a2 = roughness * roughness;
+                float gv = ndotv * sqrt((1.0 - a2) * ndotl * ndotl + a2);
+                float gl = ndotl * sqrt((1.0 - a2) * ndotv * ndotv + a2);
+                return 0.5 * rcp(gv + gl);
+            }
+
+            float3 F(float3 specular, float hdotl)
+            {
+                return specular + (1 - specular) * pow(1 - hdotl, 5);
+            }
+
+            float3 GGXBRDF(float3 wi, float3 wo, float3 normal, float3 specular, float roughness)
+            {
+                float3 h = normalize(wi + wo);
+                float ndotv = max(dot(normal, wo), 1e-5);
+                float ndoth = max(dot(normal, h), 0.0);
+                float ndotl = max(dot(normal, wi), 0.0);
+                float hdotl = max(dot(h, wi), 0.0);
+
+                float d = D(ndoth, roughness);
+                float g = G(ndotl, ndotv, roughness);
+                float3 f = F(specular, hdotl);
+
+                return d * g * f;
+            }
+
+            Varyings LitPassVert(Attributes input)
+            {
+                Varyings output = (Varyings)0;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+
+                //Pivot positions are stored in TEXCOORD1.xy and TEXCOORD2.x.
+                float3 pivotPosition = float3(input.texcoord1.xy, input.texcoord2.x) * 0.01;
+                float3 pointOffset = input.positionOS.xyz - pivotPosition;
+
+                //Initialize Bend Space.
+                float3 windDirectionOS = mul((float3x3)UNITY_MATRIX_I_M, _WindDirection.xyz);
+                float3 upVec = mul((float3x3)UNITY_MATRIX_I_M, float3(0.0, 1.0, 0.0));
+                windDirectionOS = normalize(windDirectionOS);
+                upVec = normalize(upVec);
+                float3x3 objectToBend, bendToObject;
+                InitBendSpace(windDirectionOS, upVec, objectToBend, bendToObject);
+
+                //Initialize vertex data, transform from object space to bend space.
+                float3 pivotPositionBS = mul(objectToBend, pivotPosition);
+                float3 pointOffsetBS = mul(objectToBend, pointOffset);
+                float3 originalTangentBS = mul(objectToBend, input.tangentOS.xyz);
+                float3 originalNormalBS = mul(objectToBend, input.normalOS);
+                
+                float3 windPointBS;
+                float3 windTangentBS;
+                float3 windNormalBS;
+
+                //TEXCOORD2.y is used to check pivot layers. 0 is root layer.
+                if(input.texcoord2.y &gt; 0.5)
+                {
+                    //////////////////////////////////
+                    //Calculate pivot root transform//
+                    //////////////////////////////////
+
+                    //Get pivot wind intensity.
+                    float intensity = _WindIntensity;
+                    float magnitude = length(pivotPositionBS);
+                    intensity += _WindVariety * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelay);
+                    
+                    //Calculate new position bent by wind in bend space,
+                    //and save the transform matrix.
+                    float3 axisX, axisY, axisZ;
+                    float3 windPivotPositionBS = CircleTransform(pivotPositionBS, intensity, axisX, axisY, axisZ);
+                    float4x4 pivotBSToObjBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPivotPositionBS.x), float4(axisX.y, axisY.y, axisZ.y, windPivotPositionBS.y), float4(axisX.z, axisY.z, axisZ.z, windPivotPositionBS.z), float4(0.0, 0.0, 0.0, 1.0));
+
+                    /////////////////////////////
+                    //Calculate point transform//
+                    /////////////////////////////
+
+                    //Switch axes, transform to next bend space (point bend space).
+                    pointOffsetBS = float3(pointOffsetBS.z, pointOffsetBS.y, -pointOffsetBS.x);
+
+                    //Get point wind intensity.
+                    intensity = abs(axisZ.x) * _WindIntensity;//_WindIntensityLeaves;
+                    magnitude = length(pointOffsetBS);
+                    intensity += _WindVarietyLeaves * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelayLeaves);
+                    
+                    //Calculate new position bent by wind in bend space,
+                    //and save the transform matrix from point bend space to pivot bend space.
+                    //This transform matrix can be used to calculate normal and tangent.
+                    float3 windPointPositionBS = CircleTransform(pointOffsetBS, intensity, axisX, axisY, axisZ);
+                    float4x4 pointBSToPivotBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPointPositionBS.x), float4(axisX.y, axisY.y, axisZ.y, windPointPositionBS.y), float4(axisX.z, axisY.z, axisZ.z, windPointPositionBS.z), float4(0.0, 0.0, 0.0, 1.0));
+                    
+                    //Switch axes, transform to pivot bend space.
+                    windPointPositionBS = float3(-windPointPositionBS.z, windPointPositionBS.y, windPointPositionBS.x);
+
+                    //Calculate position, normal and tangent in pivot bend space.
+                    float3 windPointPS = windPointPositionBS;
+                    float3 windTangentPS = mul((float3x3)pointBSToPivotBS, originalTangentBS);
+                    float3 windNormalPS = mul((float3x3)pointBSToPivotBS, originalNormalBS);
+
+                    //Calculate position, normal and tangent in object bend space.
+                    windPointBS = mul(pivotBSToObjBS, float4(windPointPS, 1.0)).xyz;
+                    windTangentBS = mul((float3x3)pivotBSToObjBS, windTangentPS);
+                    windNormalBS = mul((float3x3)pivotBSToObjBS, windNormalPS);
+
+                }
+                else
+                {
+                    //////////////////////////////////
+                    //Calculate point transform only//
+                    //////////////////////////////////
+
+                    //Get point wind intensity.
+                    float intensity = _WindIntensity;
+                    float magnitude = length(pointOffsetBS);
+                    intensity += _WindVariety * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelay);
+                    
+                    float3 axisX, axisY, axisZ;
+                    float3 windPointOffsetBS = CircleTransform(pointOffsetBS, intensity, axisX, axisY, axisZ);
+                    float4x4 pointBSToObjBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPointOffsetBS.x), float4(axisX.y, axisY.y, axisZ.y, windPointOffsetBS.y), float4(axisX.z, axisY.z, axisZ.z, windPointOffsetBS.z), float4(0.0, 0.0, 0.0, 1.0));
+
+                    windPointBS = windPointOffsetBS + pivotPositionBS;
+                    windTangentBS = mul((float3x3)pointBSToObjBS, originalTangentBS);
+                    windNormalBS = mul((float3x3)pointBSToObjBS, originalNormalBS);
+                }
+
+                //Transform from bend space to object space
+                float3 pivotPositionOS = mul(bendToObject, windPointBS);
+                float3 pivotTangentOS = mul(bendToObject, windTangentBS);
+                float3 pivotNormalOS = mul(bendToObject, windNormalBS);
+
+                VertexPositionInputs vertexInput = GetVertexPositionInputs(pivotPositionOS);
+                VertexNormalInputs normalInput = GetVertexNormalInputs(pivotNormalOS, float4(pivotTangentOS, input.tangentOS.w));
+
+                output.positionCS = vertexInput.positionCS;
+                output.uv = TRANSFORM_TEX(input.texcoord0, _BaseMap);
+                output.positionWS = vertexInput.positionWS;
+                output.normalWS = normalInput.normalWS;
+                output.tangentWS = float4(normalInput.tangentWS, input.tangentOS.w);
+                output.shadowCoord = TransformWorldToShadowCoord(vertexInput.positionWS);
+                
+                OUTPUT_LIGHTMAP_UV(input.staticLightmapUV, unity_LightmapST, output.staticLightmapUV);
+                OUTPUT_SH(normalInput.normalWS.xyz, output.vertexSH);
+
+                output.normalWS = normalInput.normalWS;
+                
+                return output;
+            }
+
+            float4 LitPassFrag(Varyings input, float vFace : VFACE) : SV_TARGET
+            {
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+                //wo
+                float3 positionWS = input.positionWS;
+                float3 viewDirWS = GetWorldSpaceNormalizeViewDir(positionWS);
+                
+                //wi
+                float4 shadowCoord = TransformWorldToShadowCoord(positionWS);
+                float4 shadowMask = SAMPLE_SHADOWMASK(input.staticLightmapUV);
+                Light mainLight = GetMainLight(shadowCoord, positionWS, shadowMask);
+
+                //normal
+                float3 normalMap = UnpackNormal(tex2D(_BumpMap, input.uv));
+                normalMap.xy *= _BumpIntensity;
+                float3 bitangentWS = cross(input.normalWS, input.tangentWS.xyz) * input.tangentWS.w;
+                float3x3 tbn = float3x3(input.tangentWS.xyz, bitangentWS, input.normalWS);
+                float3 normalWS = mul(normalMap, tbn);
+                normalWS = normalize(input.normalWS);
+                //If we are looking and back faces, revert the normal.
+                normalWS = vFace &gt; 0.5 ? normalWS: -normalWS;
+
+                //material properties
+                float4 baseMap = tex2D(_BaseMap, input.uv) * _BaseColor;
+                clip(baseMap.a - 0.5);
+                float roughnessMap = tex2D(_RoughnessMap, input.uv).r;
+                float roughness = max(roughnessMap * _RoughnessIntensity, 1e-2);
+                float metallicMap = tex2D(_MetallicMap, input.uv).r;
+                float metallic = metallicMap * _MetallicIntensity;
+
+                float oneMinusReflectivity = kDieletricSpec.a * (1 - metallic);
+                float reflectivity = 1.0 - oneMinusReflectivity;
+                float3 diffuse = baseMap.rgb * oneMinusReflectivity;
+                float3 specular = lerp(kDieletricSpec.rgb, baseMap.rgb, metallic);     
+                
+                //gi
+                float3 bakedGI = SAMPLE_GI(input.staticLightmapUV, input.vertexSH, normalWS);
+                MixRealtimeAndBakedGI(mainLight, normalWS, bakedGI);
+                float3 giDiffuse = bakedGI;
+                float3 reflectVector = reflect(-viewDirWS, normalWS);
+                float3 giSpecular = GlossyEnvironmentReflection(reflectVector, positionWS, roughness, 1.0);
+
+                //directional lights
+                float3 directDiffuse = diffuse;
+                float3 directSpecular = GGXBRDF(mainLight.direction, viewDirWS, normalWS, specular, roughness);
+                float ndotl = saturate(dot(mainLight.direction, normalWS));
+                float atten = mainLight.shadowAttenuation;
+
+                //indirectional lights
+                float3 indirectDiffse = giDiffuse * diffuse;
+                float surfaceReduction = rcp(roughness * roughness + 1.0);
+                float grazingTerm = saturate(1.0 - roughness + reflectivity);
+                float ndotv = saturate(dot(normalWS, viewDirWS));
+                float fresnelTerm = pow(1.0 - ndotv, 5.0);
+                float3 indirectSpecular = giSpecular * surfaceReduction * lerp(specular, grazingTerm, fresnelTerm);
+
+                //final compose
+                float3 directBRDF = (directDiffuse + directSpecular) * mainLight.color * atten * ndotl;
+                float3 indirectBRDF = indirectDiffse + indirectSpecular;
+
+                float3 finalColor = directBRDF + indirectBRDF;
+                return float4(finalColor, baseMap.a);
+            }
+
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name &quot;ShadowCaster&quot;
+            Tags{&quot;LightMode&quot; = &quot;ShadowCaster&quot;}
+
+            HLSLPROGRAM
+            #include &quot;Packages/com.unity.render-pipelines.core/ShaderLibrary/CommonMaterial.hlsl&quot;
+            #include &quot;Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl&quot;
+            #pragma vertex ShadowPassVertex
+            #pragma fragment ShadowPassFragment
+
+            float3 _LightDirection;
+
+            struct Attributes
+            {
+                float4 positionOS   : POSITION;
+                float3 normalOS     : NORMAL;
+                float4 tangentOS    : TANGENT;
+                float2 texcoord0    : TEXCOORD0;
+                float2 texcoord1    : TEXCOORD1;
+                float2 texcoord2    : TEXCOORD2;
+                float4 color        : COLOR;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct Varyings
+            {
+                float2 uv           : TEXCOORD0;
+                float4 positionCS   : SV_POSITION;
+            };
+
+            Varyings ShadowPassVertex(Attributes input)
+            {
+                Varyings output = (Varyings)0;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_TRANSFER_INSTANCE_ID(input, output);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+
+                float3 pivotPosition = float3(input.texcoord1.xy, input.texcoord2.x) * 0.01;
+                float3 pointOffset = input.positionOS.xyz - pivotPosition;
+
+                float3 windDirectionOS = mul((float3x3)UNITY_MATRIX_I_M, _WindDirection.xyz);
+                float3 upVec = mul((float3x3)UNITY_MATRIX_I_M, float3(0.0, 1.0, 0.0));
+                windDirectionOS = normalize(windDirectionOS);
+                upVec = normalize(upVec);
+                float3x3 objectToBend, bendToObject;
+                InitBendSpace(windDirectionOS, upVec, objectToBend, bendToObject);
+
+                float3 pivotPositionBS = mul(objectToBend, pivotPosition);
+                float3 pointOffsetBS = mul(objectToBend, pointOffset);
+                float3 originalTangentBS = mul(objectToBend, input.tangentOS.xyz);
+                float3 originalNormalBS = mul(objectToBend, input.normalOS);
+                
+                float3 windPointBS;
+                float3 windTangentBS;
+                float3 windNormalBS;
+
+                if(input.texcoord2.y &gt; 0.5)
+                {
+                    float intensity = _WindIntensity;
+                    float magnitude = length(pivotPositionBS);
+                    intensity += _WindVariety * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelay);
+                    
+                    float3 axisX, axisY, axisZ;
+                    float3 windPivotPositionBS = CircleTransform(pivotPositionBS, intensity, axisX, axisY, axisZ);
+                    float4x4 pivotBSToObjBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPivotPositionBS.x), float4(axisX.y, axisY.y, axisZ.y, windPivotPositionBS.y), float4(axisX.z, axisY.z, axisZ.z, windPivotPositionBS.z), float4(0.0, 0.0, 0.0, 1.0));
+
+                    pointOffsetBS = float3(pointOffsetBS.z, pointOffsetBS.y, -pointOffsetBS.x);
+
+                    intensity = abs(axisZ.x) * _WindIntensity;//_WindIntensityLeaves;
+                    magnitude = length(pointOffsetBS);
+                    intensity += _WindVarietyLeaves * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelayLeaves);
+                    
+                    float3 windPointPositionBS = CircleTransform(pointOffsetBS, intensity, axisX, axisY, axisZ);
+                    float4x4 pointBSToPivotBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPointPositionBS.x), float4(axisX.y, axisY.y, axisZ.y, windPointPositionBS.y), float4(axisX.z, axisY.z, axisZ.z, windPointPositionBS.z), float4(0.0, 0.0, 0.0, 1.0));
+                    
+                    windPointPositionBS = float3(-windPointPositionBS.z, windPointPositionBS.y, windPointPositionBS.x);
+
+                    float3 windPointPS = windPointPositionBS;
+                    float3 windTangentPS = mul((float3x3)pointBSToPivotBS, originalTangentBS);
+                    float3 windNormalPS = mul((float3x3)pointBSToPivotBS, originalNormalBS);
+
+                    windPointBS = mul(pivotBSToObjBS, float4(windPointPS, 1.0)).xyz;
+                    windTangentBS = mul((float3x3)pivotBSToObjBS, windTangentPS);
+                    windNormalBS = mul((float3x3)pivotBSToObjBS, windNormalPS);
+                }
+                else
+                {
+                    float intensity = _WindIntensity;
+                    float magnitude = length(pointOffsetBS);
+                    intensity += _WindVariety * GetVariety(_Time.y * _WindVaryFrequency - magnitude * _BranchDelay);
+                    
+                    float3 axisX, axisY, axisZ;
+                    float3 windPointOffsetBS = CircleTransform(pointOffsetBS, intensity, axisX, axisY, axisZ);
+                    float4x4 pointBSToObjBS = float4x4(float4(axisX.x, axisY.x, axisZ.x, windPointOffsetBS.x), float4(axisX.y, axisY.y, axisZ.y, windPointOffsetBS.y), float4(axisX.z, axisY.z, axisZ.z, windPointOffsetBS.z), float4(0.0, 0.0, 0.0, 1.0));
+
+                    windPointBS = windPointOffsetBS + pivotPositionBS;
+                    windTangentBS = mul((float3x3)pointBSToObjBS, originalTangentBS);
+                    windNormalBS = mul((float3x3)pointBSToObjBS, originalNormalBS);
+                }
+
+                float3 pivotPositionOS = mul(bendToObject, windPointBS);
+                float3 pivotTangentOS = mul(bendToObject, windTangentBS);
+                float3 pivotNormalOS = mul(bendToObject, windNormalBS);
+
+                VertexPositionInputs vertexInput = GetVertexPositionInputs(pivotPositionOS);
+                VertexNormalInputs normalInput = GetVertexNormalInputs(pivotNormalOS, float4(pivotTangentOS, input.tangentOS.w));
+
+                output.uv = TRANSFORM_TEX(input.texcoord0, _BaseMap);
+                output.positionCS = TransformWorldToHClip(ApplyShadowBias(vertexInput.positionWS, normalInput.normalWS, _LightDirection));
+                return output;
+            }
+
+            half4 ShadowPassFragment(Varyings input) : SV_TARGET
+            {
+                return 0.0;
+            }
+
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name &quot;DepthOnly&quot;
+            Tags{&quot;LightMode&quot; = &quot;DepthOnly&quot;}
+
+            HLSLPROGRAM
+            #pragma vertex DepthOnlyVertex
+            #pragma fragment DepthOnlyFragment
+
+            struct Attributes
+            {
+                float4 positionOS   : POSITION;
+                float2 texcoord     : TEXCOORD0;
+                float4 color        : COLOR;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+            };
+
+            struct Varyings
+            {
+                float2 uv           : TEXCOORD0;
+                float4 positionCS   : SV_POSITION;
+                UNITY_VERTEX_INPUT_INSTANCE_ID
+                UNITY_VERTEX_OUTPUT_STEREO
+            };
+
+            Varyings DepthOnlyVertex(Attributes input)
+            {
+                Varyings output = (Varyings)0;
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output);
+
+                VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS);
+                
+                output.uv = input.texcoord;
+                output.positionCS = vertexInput.positionCS;
+                
+                return output;
+            }
+
+            half4 DepthOnlyFragment(Varyings input) : SV_TARGET
+            {
+                return 0.0;
+            }
+
+            ENDHLSL
+        }
+
+        Pass
+        {
+            Name &quot;Meta&quot;
+            Tags{&quot;LightMode&quot; = &quot;Meta&quot;}
+
+            HLSLPROGRAM
+            #include &quot;Packages/com.unity.render-pipelines.universal/ShaderLibrary/MetaInput.hlsl&quot;
+
+            #pragma vertex MetaVertex
+            #pragma fragment MetaFragment
+
+            struct Attributes
+            {
+                float4 positionOS   : POSITION;
+                float3 normalOS     : NORMAL;
+                float2 uv0          : TEXCOORD0;
+                float2 uv1          : TEXCOORD1;
+                float2 uv2          : TEXCOORD2;
+            };
+
+            struct Varyings
+            {
+                float4 positionCS   : SV_POSITION;
+                float2 uv           : TEXCOORD0;
+            };
+
+            Varyings MetaVertex(Attributes input)
+            {
+                Varyings output;
+                output.positionCS = MetaVertexPosition(input.positionOS, input.uv1, input.uv2, unity_LightmapST, unity_DynamicLightmapST);
+                output.uv = TRANSFORM_TEX(input.uv0, _BaseMap);
+                return output;
+            }
+
+            half4 MetaFragment(Varyings input) : SV_Target
+            {
+                //material properties
+                float4 baseMap = tex2D(_BaseMap, input.uv);
+                float roughnessMap = tex2D(_RoughnessMap, input.uv).r;
+                float roughness = max(roughnessMap * _RoughnessIntensity, 1e-2);
+                float metallicMap = tex2D(_MetallicMap, input.uv).r;
+                float metallic = metallicMap * _MetallicIntensity;
+
+                float oneMinusReflectivity = kDieletricSpec.a * (1 - metallic);
+                float reflectivity = 1.0 - oneMinusReflectivity;
+                float3 diffuse = baseMap.rgb * oneMinusReflectivity;
+                float3 specular = lerp(kDieletricSpec.rgb, baseMap.rgb, metallic);
+
+                MetaInput metaInput;
+                metaInput.Albedo = diffuse;
+                metaInput.SpecularColor = specular;
+                metaInput.Emission = 0;
+                return MetaFragment(metaInput);
+            }
+
+            ENDHLSL
+        }
+    }
+}
+</code></pre><h2 id=后续的思考>后续的思考<a hidden class=anchor aria-hidden=true href=#后续的思考>#</a></h2><p>首先先讲好的方面，风吹动的效果确实十分自然，同样的计算出的正确的法线在PBR的渲染中也十分重要（顶点动画中正确的法线尤其不易！）。但是不足之处是矩阵运算过多了，不过矩阵运算全都在顶点着色器中，消耗也不是特别大。太多的矩阵运算也导致了这种算法的扩展性不是很好，如果想要有Pivot Layer为3的顶点，在目前的算法里面是没办法计算的，也不知道顽皮狗是怎么做的了。在模型的形状不是特别好的时候，比如一个quad来渲染草，或者是模型叶子歪歪扭扭的，会有比较大的变形。不过仔细设置每一个顶点的Pivot的话，应该还是能够解决一部分问题的，当然拙劣的Maya脚本又成了一个痛点。</p><p>总的来说我还是比较满意的，也算是解决了一个比较复杂的问题，当然了，我对hugo能够支持gif图片更加满意！</p></div><footer class=post-footer><ul class=post-tags><li><a href=https://zznewclear13.github.io/tags/vertex-animation/>Vertex Animation</a></li><li><a href=https://zznewclear13.github.io/tags/space-transformation/>Space Transformation</a></li></ul><nav class=paginav><a class=next href=https://zznewclear13.github.io/posts/draw-equal-width-bezier-curve-in-unity/><span class=title>Next Page »</span><br><span>在Unity的UI中绘制等宽的贝赛尔曲线</span></a></nav></footer></article></main><footer class=footer><span>&copy; 2022 <a href=https://zznewclear13.github.io/>ZZNEWCLEAR13</a></span>
+<span>Powered by
+<a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a> &
+        <a href=https://git.io/hugopapermod rel=noopener target=_blank>PaperMod</a></span></footer><script>let menu=document.getElementById('menu');menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)},document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener("click",function(b){b.preventDefault();var a=this.getAttribute("href").substr(1);window.matchMedia('(prefers-reduced-motion: reduce)').matches?document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView({behavior:"smooth"}),a==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${a}`)})})</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove('dark'),localStorage.setItem("pref-theme",'light')):(document.body.classList.add('dark'),localStorage.setItem("pref-theme",'dark'))})</script><script>document.querySelectorAll('pre > code').forEach(b=>{const c=b.parentNode.parentNode,a=document.createElement('button');a.classList.add('copy-code'),a.innerText='copy';function d(){a.innerText='copied!',setTimeout(()=>{a.innerText='copy'},2e3)}a.addEventListener('click',e=>{if('clipboard'in navigator){navigator.clipboard.writeText(b.textContent),d();return}const a=document.createRange();a.selectNodeContents(b);const c=window.getSelection();c.removeAllRanges(),c.addRange(a);try{document.execCommand('copy'),d()}catch(a){}c.removeRange(a)}),c.classList.contains("highlight")?c.appendChild(a):c.parentNode.firstChild==c||(b.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName=="TABLE"?b.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(a):b.parentNode.appendChild(a))})</script></body></html>
