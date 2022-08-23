@@ -12,7 +12,16 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Thu, 27 Jan 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/categories/unity/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 23 Aug 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/categories/unity/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>使用和视锥体对齐的3D纹理来渲染体积雾</title>
+      <link>https://zznewclear13.github.io/posts/create-volumetric-fog-use-view-aligned-3d-texture/</link>
+      <pubDate>Tue, 23 Aug 2022 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/create-volumetric-fog-use-view-aligned-3d-texture/</guid>
+      <description>使用3D纹理和Compute Shader来渲染体积雾.</description>
+    </item>
+    
     <item>
       <title>从深度图中获取视空间的法线</title>
       <link>https://zznewclear13.github.io/posts/get-view-space-normal-from-depth-texture/</link>
