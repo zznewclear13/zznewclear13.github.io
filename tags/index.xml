@@ -12,20 +12,29 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Tue, 23 Aug 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 24 Aug 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Compute Shader</title>
       <link>https://zznewclear13.github.io/tags/compute-shader/</link>
-      <pubDate>Tue, 23 Aug 2022 12:00:00 +0800</pubDate>
+      <pubDate>Wed, 24 Aug 2022 12:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/tags/compute-shader/</guid>
       <description></description>
     </item>
     
     <item>
+      <title>Ray Marching</title>
+      <link>https://zznewclear13.github.io/tags/ray-marching/</link>
+      <pubDate>Wed, 24 Aug 2022 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/ray-marching/</guid>
+      <description></description>
+    </item>
+    
+    <item>
       <title>Volumetric Fog</title>
       <link>https://zznewclear13.github.io/tags/volumetric-fog/</link>
-      <pubDate>Tue, 23 Aug 2022 12:00:00 +0800</pubDate>
+      <pubDate>Wed, 24 Aug 2022 12:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/tags/volumetric-fog/</guid>
       <description></description>
