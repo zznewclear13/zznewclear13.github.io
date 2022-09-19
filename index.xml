@@ -14,6 +14,15 @@
     <generator>Hugo -- gohugo.io</generator>
     <lastBuildDate>Wed, 24 Aug 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/index.xml" rel="self" type="application/rss+xml" />
     <item>
+      <title>进行时</title>
+      <link>https://zznewclear13.github.io/now/</link>
+      <pubDate>Mon, 19 Sep 2022 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/now/</guid>
+      <description>当下正在做的事情以及未来.</description>
+    </item>
+    
+    <item>
       <title>使用Ray Marching来渲染体积雾</title>
       <link>https://zznewclear13.github.io/posts/create-volumetric-fog-using-ray-marching/</link>
       <pubDate>Wed, 24 Aug 2022 12:00:00 +0800</pubDate>
