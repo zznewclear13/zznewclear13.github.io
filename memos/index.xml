@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Memos on ZZNEWCLEAR13</title>
+    <link>https://zznewclear13.github.io/memos/</link>
+    <description>Recent content in Memos on ZZNEWCLEAR13</description>
+    
+    <image>
+      <title>Memos on ZZNEWCLEAR13</title>
+      <url>https://zznewclear13.github.io/images/address.png</url>
+      <link>https://zznewclear13.github.io/memos/</link>
+    </image>
+    
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Sat, 01 Jan 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/memos/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>杂记2022</title>
+      <link>https://zznewclear13.github.io/memos/2022/</link>
+      <pubDate>Sat, 01 Jan 2022 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/memos/2022/</guid>
+      <description>事在人为.</description>
+    </item>
+    
+    <item>
+      <title>杂记2021</title>
+      <link>https://zznewclear13.github.io/memos/2021/</link>
+      <pubDate>Fri, 01 Jan 2021 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/memos/2021/</guid>
+      <description>从绝望中绽放出希望之花.</description>
+    </item>
+    
+    <item>
+      <title>杂记2020</title>
+      <link>https://zznewclear13.github.io/memos/2020/</link>
+      <pubDate>Wed, 01 Jan 2020 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/memos/2020/</guid>
+      <description>终于到了，那个科幻电影里的年份.</description>
+    </item>
+    
+    <item>
+      <title>杂记2019</title>
+      <link>https://zznewclear13.github.io/memos/2019/</link>
+      <pubDate>Tue, 01 Jan 2019 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/memos/2019/</guid>
+      <description>一回过神来居然已经2019了.</description>
+    </item>
+    
+    <item>
+      <title>杂记2018</title>
+      <link>https://zznewclear13.github.io/memos/2018/</link>
+      <pubDate>Mon, 01 Jan 2018 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/memos/2018/</guid>
+      <description>今年也要元气满满的呢.</description>
+    </item>
+    
+    <item>
+      <title>杂记2017</title>
+      <link>https://zznewclear13.github.io/memos/2017/</link>
+      <pubDate>Sun, 01 Jan 2017 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/memos/2017/</guid>
+      <description>今年也请多多指教噜.</description>
+    </item>
+    
+    <item>
+      <title>杂记2016</title>
+      <link>https://zznewclear13.github.io/memos/2016/</link>
+      <pubDate>Fri, 01 Jan 2016 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/memos/2016/</guid>
+      <description>就稍稍写点什么东西吧，适当的记录还是蛮有纪念价值的.</description>
+    </item>
+    
+  </channel>
+</rss>
