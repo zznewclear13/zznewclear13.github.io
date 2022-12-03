@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Ground Truth Ambient Occlusion on ZZNEWCLEAR13</title>
+    <link>https://zznewclear13.github.io/tags/ground-truth-ambient-occlusion/</link>
+    <description>Recent content in Ground Truth Ambient Occlusion on ZZNEWCLEAR13</description>
+    
+    <image>
+      <title>Ground Truth Ambient Occlusion on ZZNEWCLEAR13</title>
+      <url>https://zznewclear13.github.io/images/address.png</url>
+      <link>https://zznewclear13.github.io/tags/ground-truth-ambient-occlusion/</link>
+    </image>
+    
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Fri, 02 Dec 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/ground-truth-ambient-occlusion/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Unity使用ComputeShader计算GTAO</title>
+      <link>https://zznewclear13.github.io/posts/unity-ground-truth-ambient-occlusion/</link>
+      <pubDate>Fri, 02 Dec 2022 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/unity-ground-truth-ambient-occlusion/</guid>
+      <description>使用GroupSharedMemory加速GTAO的计算.</description>
+    </item>
+    
+  </channel>
+</rss>

@@ -12,13 +12,22 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Wed, 24 Aug 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 02 Dec 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Compute Shader</title>
       <link>https://zznewclear13.github.io/tags/compute-shader/</link>
-      <pubDate>Wed, 24 Aug 2022 12:00:00 +0800</pubDate>
+      <pubDate>Fri, 02 Dec 2022 12:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/tags/compute-shader/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Ground Truth Ambient Occlusion</title>
+      <link>https://zznewclear13.github.io/tags/ground-truth-ambient-occlusion/</link>
+      <pubDate>Fri, 02 Dec 2022 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/ground-truth-ambient-occlusion/</guid>
       <description></description>
     </item>
     
