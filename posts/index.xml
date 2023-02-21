@@ -12,7 +12,16 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Fri, 02 Dec 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Mon, 20 Feb 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>模仿缺氧的瓦片渲染方法</title>
+      <link>https://zznewclear13.github.io/posts/mimic-oxygen-not-includeds-tile-rendering/</link>
+      <pubDate>Mon, 20 Feb 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/mimic-oxygen-not-includeds-tile-rendering/</guid>
+      <description>使用Compute Buffer一次性绘制多个瓦片.</description>
+    </item>
+    
     <item>
       <title>Unity使用ComputeShader计算GTAO</title>
       <link>https://zznewclear13.github.io/posts/unity-ground-truth-ambient-occlusion/</link>
