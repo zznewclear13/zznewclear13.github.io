@@ -12,7 +12,16 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Thu, 19 Aug 2021 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/gaussian-blur/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 05 Apr 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/gaussian-blur/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>再议高斯模糊</title>
+      <link>https://zznewclear13.github.io/posts/gaussian-blur-revisited/</link>
+      <pubDate>Wed, 05 Apr 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/gaussian-blur-revisited/</guid>
+      <description>使用StructuredBuffer进行任意大小的高斯模糊.</description>
+    </item>
+    
     <item>
       <title>使用Group Shared Memory加速高斯模糊</title>
       <link>https://zznewclear13.github.io/posts/accelerate-gaussian-blur-using-group-shared-memory/</link>

@@ -12,7 +12,16 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Mon, 20 Feb 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/categories/unity/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Wed, 05 Apr 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/categories/unity/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>再议高斯模糊</title>
+      <link>https://zznewclear13.github.io/posts/gaussian-blur-revisited/</link>
+      <pubDate>Wed, 05 Apr 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/gaussian-blur-revisited/</guid>
+      <description>使用StructuredBuffer进行任意大小的高斯模糊.</description>
+    </item>
+    
     <item>
       <title>模仿缺氧的瓦片渲染方法</title>
       <link>https://zznewclear13.github.io/posts/mimic-oxygen-not-includeds-tile-rendering/</link>
