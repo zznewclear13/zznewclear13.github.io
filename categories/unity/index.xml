@@ -19,7 +19,7 @@
       <pubDate>Mon, 29 May 2023 12:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/posts/almost-continuous-dual-kawase-blur/</guid>
-      <description>计算出Dual Kawase等价的模糊参数.</description>
+      <description>使用线性插值来获得渐变的模糊.</description>
     </item>
     
     <item>
