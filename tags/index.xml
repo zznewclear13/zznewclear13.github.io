@@ -12,13 +12,31 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Mon, 29 May 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 01 Jul 2023 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Compute Shader</title>
       <link>https://zznewclear13.github.io/tags/compute-shader/</link>
-      <pubDate>Mon, 29 May 2023 12:00:00 +0800</pubDate>
+      <pubDate>Sat, 01 Jul 2023 19:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/tags/compute-shader/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Parallax Occlusion Mapping</title>
+      <link>https://zznewclear13.github.io/tags/parallax-occlusion-mapping/</link>
+      <pubDate>Sat, 01 Jul 2023 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/parallax-occlusion-mapping/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Relaxed Cone Step Mapping</title>
+      <link>https://zznewclear13.github.io/tags/relaxed-cone-step-mapping/</link>
+      <pubDate>Sat, 01 Jul 2023 19:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/relaxed-cone-step-mapping/</guid>
       <description></description>
     </item>
     
