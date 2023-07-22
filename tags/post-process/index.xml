@@ -1,18 +1,36 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>Group Shared Memory on ZZNEWCLEAR13</title>
-    <link>https://zznewclear13.github.io/tags/group-shared-memory/</link>
-    <description>Recent content in Group Shared Memory on ZZNEWCLEAR13</description>
+    <title>Post-Process on ZZNEWCLEAR13</title>
+    <link>https://zznewclear13.github.io/tags/post-process/</link>
+    <description>Recent content in Post-Process on ZZNEWCLEAR13</description>
     
     <image>
-      <title>Group Shared Memory on ZZNEWCLEAR13</title>
+      <title>Post-Process on ZZNEWCLEAR13</title>
       <url>https://zznewclear13.github.io/images/address.png</url>
-      <link>https://zznewclear13.github.io/tags/group-shared-memory/</link>
+      <link>https://zznewclear13.github.io/tags/post-process/</link>
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sun, 09 Apr 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/group-shared-memory/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 22 Jul 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/post-process/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Unity的高质量的Bloom效果</title>
+      <link>https://zznewclear13.github.io/posts/unity-high-quality-bloom/</link>
+      <pubDate>Sat, 22 Jul 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/unity-high-quality-bloom/</guid>
+      <description>使用Dual Kawase Blur制作高质量的Bloom效果.</description>
+    </item>
+    
+    <item>
+      <title>几乎连续的双Kawase模糊</title>
+      <link>https://zznewclear13.github.io/posts/almost-continuous-dual-kawase-blur/</link>
+      <pubDate>Mon, 29 May 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/almost-continuous-dual-kawase-blur/</guid>
+      <description>使用线性插值来获得渐变的模糊.</description>
+    </item>
+    
     <item>
       <title>Unity两个Pass的圆形模糊</title>
       <link>https://zznewclear13.github.io/posts/unity-two-pass-circular-blur/</link>

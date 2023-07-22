@@ -12,7 +12,16 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sat, 01 Jul 2023 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 22 Jul 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Unity的高质量的Bloom效果</title>
+      <link>https://zznewclear13.github.io/posts/unity-high-quality-bloom/</link>
+      <pubDate>Sat, 22 Jul 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/unity-high-quality-bloom/</guid>
+      <description>使用Dual Kawase Blur制作高质量的Bloom效果.</description>
+    </item>
+    
     <item>
       <title>在Unity里实现松散圆锥步进Relaxed Cone Step Mapping</title>
       <link>https://zznewclear13.github.io/posts/relaxed-cone-step-mapping-in-unity/</link>

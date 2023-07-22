@@ -12,7 +12,25 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sat, 01 Jul 2023 19:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 22 Jul 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Bloom</title>
+      <link>https://zznewclear13.github.io/tags/bloom/</link>
+      <pubDate>Sat, 22 Jul 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/bloom/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Post-Process</title>
+      <link>https://zznewclear13.github.io/tags/post-process/</link>
+      <pubDate>Sat, 22 Jul 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/post-process/</guid>
+      <description></description>
+    </item>
+    
     <item>
       <title>Compute Shader</title>
       <link>https://zznewclear13.github.io/tags/compute-shader/</link>
@@ -50,15 +68,6 @@
     </item>
     
     <item>
-      <title>Group Shared Memory</title>
-      <link>https://zznewclear13.github.io/tags/group-shared-memory/</link>
-      <pubDate>Mon, 29 May 2023 12:00:00 +0800</pubDate>
-      
-      <guid>https://zznewclear13.github.io/tags/group-shared-memory/</guid>
-      <description></description>
-    </item>
-    
-    <item>
       <title>Bokeh</title>
       <link>https://zznewclear13.github.io/tags/bokeh/</link>
       <pubDate>Sun, 09 Apr 2023 12:00:00 +0800</pubDate>
@@ -73,6 +82,15 @@
       <pubDate>Sun, 09 Apr 2023 12:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/tags/circular-blur/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Group Shared Memory</title>
+      <link>https://zznewclear13.github.io/tags/group-shared-memory/</link>
+      <pubDate>Sun, 09 Apr 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/group-shared-memory/</guid>
       <description></description>
     </item>
     

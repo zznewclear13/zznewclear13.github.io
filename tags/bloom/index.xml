@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Bloom on ZZNEWCLEAR13</title>
+    <link>https://zznewclear13.github.io/tags/bloom/</link>
+    <description>Recent content in Bloom on ZZNEWCLEAR13</description>
+    
+    <image>
+      <title>Bloom on ZZNEWCLEAR13</title>
+      <url>https://zznewclear13.github.io/images/address.png</url>
+      <link>https://zznewclear13.github.io/tags/bloom/</link>
+    </image>
+    
+    <generator>Hugo -- gohugo.io</generator>
+    <lastBuildDate>Sat, 22 Jul 2023 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/bloom/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Unity的高质量的Bloom效果</title>
+      <link>https://zznewclear13.github.io/posts/unity-high-quality-bloom/</link>
+      <pubDate>Sat, 22 Jul 2023 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/unity-high-quality-bloom/</guid>
+      <description>使用Dual Kawase Blur制作高质量的Bloom效果.</description>
+    </item>
+    
+  </channel>
+</rss>
