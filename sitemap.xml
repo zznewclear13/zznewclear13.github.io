@@ -2,6 +2,15 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://zznewclear13.github.io/memos/</loc>
+    <lastmod>2024-01-01T12:00:00+08:00</lastmod>
+  </url><url>
+    <loc>https://zznewclear13.github.io/</loc>
+    <lastmod>2024-01-01T12:00:00+08:00</lastmod>
+  </url><url>
+    <loc>https://zznewclear13.github.io/memos/2024/</loc>
+    <lastmod>2024-01-01T12:00:00+08:00</lastmod>
+  </url><url>
     <loc>https://zznewclear13.github.io/outreach/</loc>
     <lastmod>2023-09-24T12:00:00+08:00</lastmod>
   </url><url>
@@ -24,9 +33,6 @@
     <lastmod>2023-07-22T12:00:00+08:00</lastmod>
   </url><url>
     <loc>https://zznewclear13.github.io/posts/unity-high-quality-bloom/</loc>
-    <lastmod>2023-07-22T12:00:00+08:00</lastmod>
-  </url><url>
-    <loc>https://zznewclear13.github.io/</loc>
     <lastmod>2023-07-22T12:00:00+08:00</lastmod>
   </url><url>
     <loc>https://zznewclear13.github.io/tags/compute-shader/</loc>
@@ -73,9 +79,6 @@
   </url><url>
     <loc>https://zznewclear13.github.io/posts/mimic-oxygen-not-includeds-tile-rendering/</loc>
     <lastmod>2023-02-20T12:00:00+08:00</lastmod>
-  </url><url>
-    <loc>https://zznewclear13.github.io/memos/</loc>
-    <lastmod>2023-01-01T12:00:00+08:00</lastmod>
   </url><url>
     <loc>https://zznewclear13.github.io/memos/2023/</loc>
     <lastmod>2023-01-01T12:00:00+08:00</lastmod>
