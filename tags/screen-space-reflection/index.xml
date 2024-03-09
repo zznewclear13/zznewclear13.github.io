@@ -12,7 +12,16 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sat, 09 Mar 2024 17:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/screen-space-reflection/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 09 Mar 2024 18:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/screen-space-reflection/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Screen Space Reflection</title>
+      <link>https://zznewclear13.github.io/posts/screen-space-reflection-en/</link>
+      <pubDate>Sat, 09 Mar 2024 18:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/screen-space-reflection-en/</guid>
+      <description>The goal is to get the correct reflection color using as few iterations as possible within a single shader.</description>
+    </item>
+    
     <item>
       <title>屏幕空间反射</title>
       <link>https://zznewclear13.github.io/posts/screen-space-reflection/</link>
