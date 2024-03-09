@@ -12,7 +12,16 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Mon, 01 Jan 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 09 Mar 2024 17:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>屏幕空间反射</title>
+      <link>https://zznewclear13.github.io/posts/screen-space-reflection/</link>
+      <pubDate>Sat, 09 Mar 2024 17:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/screen-space-reflection/</guid>
+      <description>目标是在一个Shader中使用尽量少的步进次数得到正确的反射颜色.</description>
+    </item>
+    
     <item>
       <title>杂记2024</title>
       <link>https://zznewclear13.github.io/memos/2024/</link>
