@@ -12,6 +12,7 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
     <lastBuildDate>Wed, 20 Oct 2021 18:07:20 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/debug-tools/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>GPU颜色查看器</title>

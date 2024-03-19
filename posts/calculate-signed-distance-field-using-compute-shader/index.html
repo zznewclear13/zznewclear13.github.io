@@ -1,561 +1,562 @@
-<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>使用Compute Shader计算有向距离场 | ZZNEWCLEAR13</title><meta name=keywords content="Compute Shader,Signed Distance Field,Jump Flooding Algorithm"><meta name=description content="使用Jump Flooding Algorithm来对一张图片计算有向距离场."><meta name=author content="zznewclear13"><link rel=canonical href=https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/><link crossorigin=anonymous href=/assets/css/stylesheet.css rel="preload stylesheet" as=style><link rel=icon href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=32x32 href=https://zznewclear13.github.io/favicon.ico><link rel=apple-touch-icon href=https://zznewclear13.github.io/favicon.ico><link rel=mask-icon href=https://zznewclear13.github.io/favicon.ico><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><noscript><style>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--code-block-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><script type=application/javascript>var doNotTrack=!1;doNotTrack||(function(a,e,f,g,b,c,d){a.GoogleAnalyticsObject=b,a[b]=a[b]||function(){(a[b].q=a[b].q||[]).push(arguments)},a[b].l=1*new Date,c=e.createElement(f),d=e.getElementsByTagName(f)[0],c.async=1,c.src=g,d.parentNode.insertBefore(c,d)}(window,document,'script','https://www.google-analytics.com/analytics.js','ga'),ga('create','UA-157509723-1','auto'),ga('send','pageview'))</script><meta property="og:title" content="使用Compute Shader计算有向距离场"><meta property="og:description" content="使用Jump Flooding Algorithm来对一张图片计算有向距离场."><meta property="og:type" content="article"><meta property="og:url" content="https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/"><meta property="og:image" content="https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/posts/images/SignedDistanceField.jpg"><meta property="article:section" content="posts"><meta property="article:published_time" content="2021-06-21T19:00:00+08:00"><meta property="article:modified_time" content="2021-06-21T19:00:00+08:00"><meta property="og:site_name" content="ZZNEWCLEAR13"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/posts/images/SignedDistanceField.jpg"><meta name=twitter:title content="使用Compute Shader计算有向距离场"><meta name=twitter:description content="使用Jump Flooding Algorithm来对一张图片计算有向距离场."><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://zznewclear13.github.io/posts/"},{"@type":"ListItem","position":2,"name":"使用Compute Shader计算有向距离场","item":"https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"使用Compute Shader计算有向距离场","name":"使用Compute Shader计算有向距离场","description":"使用Jump Flooding Algorithm来对一张图片计算有向距离场.","keywords":["Compute Shader","Signed Distance Field","Jump Flooding Algorithm"],"articleBody":"什么是有向距离场以及它能用来干什么 有向距离场记录的是从一个点到集合边界的的距离值，其值的正负对应该点在集合外部或内部。有向距离场有很广的应用范围可以用来简单的生成Voronoi图形，可以用来做全局光照的计算，可以用来做两个形状的平滑的变形，可以用来做高清晰度的字体，也可以用来做Ray March（虽然我认为不如直接光线追踪求交来的效率高）。像原神就使用了SDF的方法，生成了角色脸部的阴影图，从而让角色脸部的阴影能自然的变化。\n那么什么又是Jump Flooding Algorithm呢 Jump Flooding Algorithm是荣国栋在他的博士论文Jump Flooding Algorithm On Graphics Hardware And Its Applications提出的一种在GPU上运行的能够快速传播某个像素的信息到其他像素的算法。\n普通的Flooding算法在一次运行中，固定向相邻的一个像素的像素传播信息，而Jump Flooding则是按照2的幂次递增或是递减来传播信息。这和之前提到的并行计算——Reduction的想法差不多。下图演示了普通的Flooding和Jump Flooding的过程： 使用JFA计算一张2D图片对应的SDF贴图 首先在Unity中创建JumpFlooding.cs, JFAComputeShader.compute, 和JFAVisualize.shader，分别用来执行Compute Shader，使用JFA算法计算SDF和可视化JFA算法的结果。\n这里使用一张RGB通道为灰色，Alpha通道写着“JFA”的贴图作为我们2D图片的输入。 \r\r整体思路和需要注意的事项  先从简单实现功能上来考虑，暂时忽略掉抗锯齿的需求，直接对Alpha通道的值按照0.5来划分出图形的内部和外部，大于等于0.5为外部，小于0.5为内部。 SDF需要要计算距离，这里使用像素点中心到另一个像素点中心的距离（也可以使用像素点左下角到另一个像素点左下角的距离，不过为了明确起见，还是加上这半个像素的偏移比较好）。距离可以用uv的大小来表示，也可以用像素数量来表示，针对图像长宽不同的情况，这里以一个像素宽度为1来表示两个像素点的距离。在最后采样JFA的Render Texture的时候，也要注意使用sampler_PointClamp来进行采样，计算距离时也不能仅仅使用uv来计算，而是要使用像素中间的点的位置来进行计算。 普通的JFA算法会使用到Render Texture的两个通道，来标记像素对应的最近边界像素的UV，由于记录的是UV的数值而不是颜色信息，Render Texture要储存在线性空间中。由于要同时计算内部和外部的点到边界的有向距离，JFA算法会使用到Render Texture全部的四个通道，这里使用前两位记录位于内部的像素对应的边界像素的坐标，用后两位记录位于外部的像素对应的边界像素的坐标，即对于内部的像素(nearestUV.x, nearestUV.y, Z, W)，对于外部的像素(X, Y, nearestUV.x, nearestUV.y)，XYZW则可以用来表示该点为最初始的内外部的点、包含JFA传递的信息的点。不包含JFA传递的信息的点。 在JFA计算之前，需要先让贴图对应的点包含JFA信息，也就是说，对于内部的点初始化为(UV.x, UV.y, -1, -1)，对于外部的点初始化为(-1, -1, UV.x, UV.y)。这要求我们使用的Render Texture格式为至少R16G16B16A16 SFloat。 在JFA的计算中，以外部的像素点为例，所进行的操作是：采样上次经过JFA操作的Render Texture；根据XY通道判断该点在边界的内部还是外部，内部就跳过；对外部的像素点，通过XY通道判断是否已包含JFA的信息，如果包含，根据ZW通道计算出当前点到其包含的最近像素的距离，如果不包含，将这个距离设置为一个极大的常数；分别采样距离像素点2的幂次的距离的八个像素，判断这些像素是否已包含JFA的信息，如果不包含，采样下一个点，如果包含，根据这些像素的ZW通道计算出当前点到这些像素包含的最近像素的距离，并和上一步算出的距离进行比较，如果小于上一步算出的距离，则证明该像素对应的最近像素为周围点包含的像素，更新该像素的ZW通道，并且将XY通道标记成已包含JFA的信息。 采样周边像素的步长从2D贴图的长宽的一半向上取整开始，每次JFA都取上一步步长的一半向上取整作为新的步长，一直进行到步长为(1, 1)，进行最后一次JFA计算。 经过JFA计算之后，还需要将分别表示内部的点对应的最近像素的UV和外部的点对应的最近像素的UV结合起来，储存为一张贴图，可以是(nearestUV.x, nearestUV.y, 0, inside?1:0)，也可以是(distance * inside?-1:1, 1)。 应该是跟当前平台有关，有时候会出现贴图上下颠倒的情况，可以用UNITY_UV_STARTS_AT_TOP来协助解决，不过compute shader可能需要自己启用这个宏，这里就直接硬写在shader里，不做平台判断了。  JFAComputeShader.compute 根据上面的整体思路，我们需要三个kernel，一个用来初始化，一个做JFA计算，最后一个用来合成最后的贴图。Compute Shader的关键字需要Unity 2020以上（我也不知道具体哪个版本）才能有，这里就暂时用UNITY_2020_2_OR_NEWER这个宏来屏蔽了。\n#pragma kernel CopyUVMain\r#define PIXEL_OFFSET 0.5\rTexture2D _InputTexture;\rRWTexture2D _OutputTexture;\rfloat4 _TextureSize;\rfloat _Channel;\r[numthreads(8, 8, 1)]\rvoid CopyUVMain(uint3 id : SV_DispatchThreadID)\r{\rfloat2 samplePosition = id.xy + PIXEL_OFFSET;\rif (any(samplePosition = _TextureSize.xy))\rreturn;\rfloat4 inputTexture = _InputTexture.Load(float3(id.xy, 0));\rfloat determin = 0;\rswitch ((uint)_Channel)\r{\rcase 0:\rdetermin = inputTexture.r;\rbreak;\rcase 1:\rdetermin = inputTexture.g;\rbreak;\rcase 2:\rdetermin = inputTexture.b;\rbreak;\rcase 3:\rdetermin = inputTexture.a;\rbreak;\rdefault:\rbreak;\r}\rif (determin = 0.5)\r{\r_OutputTexture[id.xy] = float4(-1, -1, samplePosition.x * _TextureSize.z, samplePosition.y * _TextureSize.w);\r}\relse\r{\r_OutputTexture[id.xy] = float4(samplePosition.x * _TextureSize.z, samplePosition.y * _TextureSize.w, -1, -1);\r} }\r#pragma kernel JFAMain\rfloat2 _Step;\rstatic int2 directions[] =\r{\rint2(-1, -1),\rint2(-1, 0),\rint2(-1, 1),\rint2(0, -1),\rint2(0, 1),\rint2(1, -1),\rint2(1, 0),\rint2(1, 1)\r};\rfloat4 JFAOutside(float4 inputTex, float2 idxy)\r{\rfloat4 outputTex = inputTex;\r//cull inside\rif (inputTex.x != -1)\r{\rfloat2 nearestUV = inputTex.zw;\rfloat minDistance = 1e16;\r//if had min distance in previous flooding\rif (inputTex.z != -1)\r{\rminDistance = length(idxy + PIXEL_OFFSET - nearestUV * _TextureSize.xy);\r}\rbool hasMin = false;\rfor (uint i = 0; i = _TextureSize.xy))\rreturn;\rfloat4 inputTexture = _InputTexture.Load(float3(id.xy, 0));\rfloat4 outSide = JFAOutside(inputTexture, id.xy);\r_OutputTexture[id.xy] = JFAInside(outSide, id.xy);\r}\r#pragma kernel ComposeMain\rTexture2D _OriginalTexture;\r#if UNITY_2020_2_OR_NEWER\r#pragma multi_compile _USE_GRAYSCALE\r#else\r#define _USE_GRAYSCALE 0\r#endif\r[numthreads(8, 8, 1)]\rvoid ComposeMain(uint3 id : SV_DispatchThreadID)\r{\ruint2 reverseY = id.xy;\rreverseY = uint2(id.x, _TextureSize.y - 1 - id.y);\rfloat4 inputTexture = _InputTexture.Load(float3(reverseY, 0));\rfloat4 originalTexture = _OriginalTexture.Load(float3(reverseY, 0));\rfloat determin = 0;\rswitch ((uint)_Channel)\r{\rcase 0:\rdetermin = originalTexture.r;\rbreak;\rcase 1:\rdetermin = originalTexture.g;\rbreak;\rcase 2:\rdetermin = originalTexture.b;\rbreak;\rcase 3:\rdetermin = originalTexture.a;\rbreak;\rdefault:\rbreak;\r}\r#if _USE_GRAYSCALE\rfloat distance = 0;\rif (determin = 0.5)\r{\rdistance = -length(reverseY + PIXEL_OFFSET - inputTexture.xy * _TextureSize.xy);\r_OutputTexture[id.xy] = float4(distance, distance, distance, 1);\r}\relse\r{\rdistance = length(reverseY + PIXEL_OFFSET - inputTexture.zw * _TextureSize.xy);\r_OutputTexture[id.xy] = float4(distance, distance, distance, 0);\r}\r#else\rif (determin = 0.5)\r{\r_OutputTexture[id.xy] = float4(inputTexture.xy, 0, 1);\r}\relse\r{\r_OutputTexture[id.xy] = float4(inputTexture.zw, 0, 0);\r}\r#endif\r}\rJumpFlooding.cs C#脚本没什么特殊的地方了，只要准备好Render Texture和各类参数，传递给Compute Shader就好了。为了方便可视化，这里使用了MonoBehaviour的Coroutine，需要点击play之后在点击脚本里的\"Calculate SDF\"。这里保存的是记录了对应的像素点的UV的贴图，这样可以用jpg或者png来保存，如果要保存记录了有向距离的灰度贴图，就需要保存为float类型的exr格式了。\nusing System.Collections; using UnityEngine; using UnityEditor; public class JumpFlooding : MonoBehaviour { enum Channels { R, G, B, A } public Texture inputTexture; public ComputeShader computeShader; public float updateTime; public MeshRenderer meshRenderer; public bool useGrayScale = false; private RenderTexture[] renderTextures; private static void EnsureArray(ref T[] array, int size, T initialValue = default(T)) { if (array == null || array.Length != size) { array = new T[size]; for (int i = 0; i != size; i++) array[i] = initialValue; } } private static void EnsureRenderTexture(ref RenderTexture rt, RenderTextureDescriptor descriptor, string RTName) { if (rt != null \u0026\u0026 (rt.width != descriptor.width || rt.height != descriptor.height)) { RenderTexture.ReleaseTemporary(rt); rt = null; } if (rt == null) { RenderTextureDescriptor desc = descriptor; desc.depthBufferBits = 0; desc.msaaSamples = 1; rt = RenderTexture.GetTemporary(desc); rt.name = RTName; if (!rt.IsCreated()) rt.Create(); } } public static void EnsureRT(ref RenderTexture[] rts, RenderTextureDescriptor descriptor) { EnsureArray(ref rts, 2); EnsureRenderTexture(ref rts[0], descriptor, \"Froxel Tex One\"); EnsureRenderTexture(ref rts[1], descriptor, \"Froxel Tex Two\"); } public void Calculate() { StartCoroutine(CalculateCoroutine()); } public void CopyUV(Texture texture, RenderTexture renderTexture, uint channel) { int kernel = computeShader.FindKernel(\"CopyUVMain\"); computeShader.GetKernelThreadGroupSizes(kernel, out uint x, out uint y, out uint z); Vector3Int dispatchCounts = new Vector3Int(Mathf.CeilToInt((float)inputTexture.width / x), Mathf.CeilToInt((float)inputTexture.height / y), 1); computeShader.SetTexture(kernel, \"_InputTexture\", texture); computeShader.SetTexture(kernel, \"_OutputTexture\", renderTexture); computeShader.SetVector(\"_TextureSize\", new Vector4(texture.width, texture.height, 1.0f / texture.width, 1.0f / texture.height)); computeShader.SetFloat(\"_Channel\", (float)channel); computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z); } public void JFA(RenderTexture one, RenderTexture two, Vector2Int step, bool reverse) { int kernel = computeShader.FindKernel(\"JFAMain\"); computeShader.GetKernelThreadGroupSizes(kernel, out uint x, out uint y, out uint z); Vector3Int dispatchCounts = new Vector3Int(Mathf.CeilToInt((float)inputTexture.width / x), Mathf.CeilToInt((float)inputTexture.height / y), 1); if (reverse) { computeShader.SetTexture(kernel, \"_InputTexture\", two); computeShader.SetTexture(kernel, \"_OutputTexture\", one); } else { computeShader.SetTexture(kernel, \"_InputTexture\", one); computeShader.SetTexture(kernel, \"_OutputTexture\", two); } computeShader.SetVector(\"_TextureSize\", new Vector4(inputTexture.width, inputTexture.height, 1.0f / inputTexture.width, 1.0f / inputTexture.height)); computeShader.SetVector(\"_Step\", (Vector2)step); computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z); } public void Compose(RenderTexture one, RenderTexture two, Texture texture, uint channel, bool reverse) { int kernel = computeShader.FindKernel(\"ComposeMain\"); computeShader.GetKernelThreadGroupSizes(kernel, out uint x, out uint y, out uint z); Vector3Int dispatchCounts = new Vector3Int(Mathf.CeilToInt((float)inputTexture.width / x), Mathf.CeilToInt((float)inputTexture.height / y), 1); if (reverse) { computeShader.SetTexture(kernel, \"_InputTexture\", two); computeShader.SetTexture(kernel, \"_OutputTexture\", one); } else { computeShader.SetTexture(kernel, \"_InputTexture\", one); computeShader.SetTexture(kernel, \"_OutputTexture\", two); } computeShader.SetTexture(kernel, \"_OriginalTexture\", texture); computeShader.SetFloat(\"_Channel\", (float)channel); #if UNITY_2020_2_OR_NEWER  if(useGrayScale) { computeShader.EnableKeyword(\"_USE_GRAYSCALE\"); } else { computeShader.DisableKeyword(\"_USE_GRAYSCALE\"); } #endif  computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z); } public void Visualize(RenderTexture one, RenderTexture two, bool reverse) { MaterialPropertyBlock mpb = new MaterialPropertyBlock(); mpb.SetTexture(\"_MainTex\", reverse ? two : one); meshRenderer.SetPropertyBlock(mpb); } static public void SaveToTexture(string name, RenderTexture renderTexture, bool alphaIsTransparency) { RenderTexture currentRT = RenderTexture.active; RenderTexture.active = renderTexture; Texture2D texture2D = new Texture2D(renderTexture.width, renderTexture.height, TextureFormat.RGBAFloat, false); texture2D.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0); RenderTexture.active = currentRT; System.IO.Directory.CreateDirectory(\"Assets/JumpFlooding/\"); byte[] bytes = texture2D.EncodeToEXR(); string path = \"Assets/JumpFlooding/\" + name + \".exr\"; System.IO.File.WriteAllBytes(path, bytes); TextureImporter importer = (TextureImporter)AssetImporter.GetAtPath(path); if (importer != null) { importer.alphaIsTransparency = alphaIsTransparency; importer.sRGBTexture = false; importer.mipmapEnabled = false; AssetDatabase.ImportAsset(path); } Debug.Log(\"Saved to \" + path); AssetDatabase.Refresh(); } IEnumerator CalculateCoroutine() { RenderTextureDescriptor desc = new RenderTextureDescriptor { width = inputTexture.width, height = inputTexture.height, volumeDepth = 1, msaaSamples = 1, graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat, enableRandomWrite = true, dimension = UnityEngine.Rendering.TextureDimension.Tex2D, sRGB = false }; EnsureRT(ref renderTextures, desc); RenderTexture rtOne = renderTextures[0]; RenderTexture rtTwo = renderTextures[1]; CopyUV(inputTexture, rtOne, (uint)Channels.A); yield return new WaitForSeconds(updateTime); Shader.DisableKeyword(\"RENDERTEXTURE_UPSIDE_DOWN\"); Vector2Int step = new Vector2Int((inputTexture.width + 1)  1, (inputTexture.height + 1)  1); bool reverse = false; do { Debug.Log(step); JFA(rtOne, rtTwo, step, reverse); reverse = !reverse; Visualize(rtOne, rtTwo, reverse); step = new Vector2Int((step.x + 1)  1, (step.y + 1)  1); yield return new WaitForSeconds(updateTime); } while (step.x  1 || step.y  1); Debug.Log(new Vector2Int(1, 1)); JFA(rtOne, rtTwo, new Vector2Int(1, 1), reverse); reverse = !reverse; Visualize(rtOne, rtTwo, reverse); yield return new WaitForSeconds(updateTime); Debug.Log(new Vector2Int(1, 1)); JFA(rtOne, rtTwo, new Vector2Int(1, 1), reverse); reverse = !reverse; Visualize(rtOne, rtTwo, reverse); yield return new WaitForSeconds(updateTime); Compose(rtOne, rtTwo, inputTexture, (uint)Channels.A, reverse); reverse = !reverse; Shader.EnableKeyword(\"RENDERTEXTURE_UPSIDE_DOWN\"); Visualize(rtOne, rtTwo, reverse); SaveToTexture(\"WhatIsThis\", reverse ? rtTwo : rtOne, false); } } [CustomEditor(typeof(JumpFlooding))] public class JumpFloodingEditor : Editor { private JumpFlooding jumpFlooding; private void OnEnable() { jumpFlooding = (JumpFlooding)target; } public override void OnInspectorGUI() { base.OnInspectorGUI(); using (new EditorGUI.DisabledGroupScope(!Application.isPlaying)) { if (GUILayout.Button(\"Calculate SDF\", GUILayout.Height(30))) { jumpFlooding.Calculate(); } } } } JFAVisualize.shader 这个shader应该用在宽高比2:1的Mesh上，这样左半部分是记录了最近像素的uv的贴图，有伴部分是记录了带方向的距离的灰度贴图或者其描边的可视化。需要注意采样的方式和使用像素点中心来计算距离。\nShader \"Unlit/JFAVisualize\"\r{\rProperties\r{\r_MainTex (\"Texture\", 2D) = \"white\" {}\r_Distance (\"Distance\", float) = 10\r}\rHLSLINCLUDE\r#include \"Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl\"\r#include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl\"\r#pragma multi_compile _ RENDERTEXTURE_UPSIDE_DOWN\rTexture2D _MainTex;\rfloat4 _MainTex_TexelSize;\rSamplerState sampler_PointClamp;\rfloat _Distance;\rstruct Attributes\r{\rfloat4 positionOS : POSITION;\rfloat2 texcoord : TEXCOORD0;\r};\rstruct Varyings\r{\rfloat4 positionCS : SV_POSITION;\rfloat2 uv : TEXCOORD0;\r};\rVaryings Vert(Attributes input)\r{\rVaryings output = (Varyings)0;\rVertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);\routput.positionCS = vertexInput.positionCS;\routput.uv = input.texcoord;\rreturn output;\r}\rfloat4 Frag(Varyings input) : SV_TARGET\r{\rfloat2 upsideDown = input.uv;\r#if RENDERTEXTURE_UPSIDE_DOWN\rupsideDown = float2(input.uv.x, 1 - input.uv.y);\r#endif\rfloat2 uvOne = float2(upsideDown.x * 2, upsideDown.y);\rfloat2 uvTwo = float2(upsideDown.x * 2 - 1, upsideDown.y);\rfloat4 returnColor = 0;\rif (input.uv.x = 0.5)\r{\rfloat4 texColor = _MainTex.SampleLevel(sampler_PointClamp, uvTwo, 0);\r#if RENDERTEXTURE_UPSIDE_DOWN\rfloat2 realTexcoord = float2(input.uv.x * 2 - 1, input.uv.y);\rrealTexcoord = floor(realTexcoord* _MainTex_TexelSize.zw) + 0.5;\rfloat distance = length(texColor.xy * _MainTex_TexelSize.zw - realTexcoord);\r#else\rfloat2 realTexcoord = uvTwo;\rrealTexcoord = floor(realTexcoord * _MainTex_TexelSize.zw) + 0.5;\rfloat distance = length(texColor.xy * _MainTex_TexelSize.zw - realTexcoord);\r#endif\rfloat grayScale = smoothstep(_Distance, 0, distance);\rreturnColor = float4(grayScale, grayScale, grayScale, 1);\r}\relse\r{\rreturnColor = _MainTex.SampleLevel(sampler_PointClamp, uvOne, 0);\r}\rreturn returnColor;\r}\rENDHLSL\rSubShader\r{\rTags { \"RenderType\"=\"Opaque\" }\rLOD 100\rPass\r{\rName \"JFA Visualize Pass\"\rTags{\"LightMode\" = \"UniversalForward\"}\rCull Back\rZTest LEqual\rZWrite On\rHLSLPROGRAM\r#pragma vertex Vert\r#pragma fragment Frag\rENDHLSL\r}\r}\r}\r","wordCount":"1568","inLanguage":"en","image":"https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/posts/images/SignedDistanceField.jpg","datePublished":"2021-06-21T19:00:00+08:00","dateModified":"2021-06-21T19:00:00+08:00","author":{"@type":"Person","name":"zznewclear13"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/"},"publisher":{"@type":"Organization","name":"ZZNEWCLEAR13","logo":{"@type":"ImageObject","url":"https://zznewclear13.github.io/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add('dark'):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove('dark'):window.matchMedia('(prefers-color-scheme: dark)').matches&&document.body.classList.add('dark')</script><header class=header><nav class=nav><div class=logo><a href=https://zznewclear13.github.io/ accesskey=h title="ZZNEWCLEAR13 (Alt + H)"><img src=https://zznewclear13.github.io/apple-touch-icon.png alt aria-label=logo height=35>ZZNEWCLEAR13</a><div class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div><ul id=menu><li><a href=https://zznewclear13.github.io/now/ title=进行时><span>进行时</span></a></li><li><a href=https://zznewclear13.github.io/tags/ title=标签><span>标签</span></a></li><li><a href=https://zznewclear13.github.io/categories/ title=分类><span>分类</span></a></li><li><a href=https://zznewclear13.github.io/links/ title=友情链接><span>友情链接</span></a></li><li><a href=https://zznewclear13.github.io/search/ title="🔎 (Alt + /)" accesskey=/><span>🔎</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://zznewclear13.github.io/>Home</a>&nbsp;»&nbsp;<a href=https://zznewclear13.github.io/posts/>Posts</a></div><h1 class="post-title entry-hint-parent">使用Compute Shader计算有向距离场</h1><div class=post-description>使用Jump Flooding Algorithm来对一张图片计算有向距离场.</div><div class=post-meta><span title="2021-06-21 19:00:00 +0800 CST">June 21, 2021</span>&nbsp;·&nbsp;zznewclear13&nbsp;|&nbsp;<a href=https://github.com/zznewclear13/zznewclear13.com/blob/main/content/posts/calculate-signed-distance-field-using-compute-shader.md rel="noopener noreferrer" target=_blank>编辑</a></div></header><figure class=entry-cover><img loading=eager src=https://zznewclear13.github.io/posts/images/SignedDistanceField.jpg alt="Signed Distance Field Cover"><p>Signed Distance Field Result</p></figure><div class=toc><details open><summary accesskey=c title="(Alt + C)"><div class=details>使用Compute Shader计算有向距离场</div></summary><div class=inner><ul><li><a href=#%e4%bb%80%e4%b9%88%e6%98%af%e6%9c%89%e5%90%91%e8%b7%9d%e7%a6%bb%e5%9c%ba%e4%bb%a5%e5%8f%8a%e5%ae%83%e8%83%bd%e7%94%a8%e6%9d%a5%e5%b9%b2%e4%bb%80%e4%b9%88 aria-label=什么是有向距离场以及它能用来干什么>什么是有向距离场以及它能用来干什么</a></li><li><a href=#%e9%82%a3%e4%b9%88%e4%bb%80%e4%b9%88%e5%8f%88%e6%98%afjump-flooding-algorithm%e5%91%a2 aria-label="那么什么又是Jump Flooding Algorithm呢">那么什么又是Jump Flooding Algorithm呢</a></li><li><a href=#%e4%bd%bf%e7%94%a8jfa%e8%ae%a1%e7%ae%97%e4%b8%80%e5%bc%a02d%e5%9b%be%e7%89%87%e5%af%b9%e5%ba%94%e7%9a%84sdf%e8%b4%b4%e5%9b%be aria-label=使用JFA计算一张2D图片对应的SDF贴图>使用JFA计算一张2D图片对应的SDF贴图</a><ul><li><a href=#%e6%95%b4%e4%bd%93%e6%80%9d%e8%b7%af%e5%92%8c%e9%9c%80%e8%a6%81%e6%b3%a8%e6%84%8f%e7%9a%84%e4%ba%8b%e9%a1%b9 aria-label=整体思路和需要注意的事项>整体思路和需要注意的事项</a></li><li><a href=#jfacomputeshadercompute aria-label=JFAComputeShader.compute>JFAComputeShader.compute</a></li><li><a href=#jumpfloodingcs aria-label=JumpFlooding.cs>JumpFlooding.cs</a></li><li><a href=#jfavisualizeshader aria-label=JFAVisualize.shader>JFAVisualize.shader</a></li></ul></li></ul></div></details></div><div class=post-content><h2 id=什么是有向距离场以及它能用来干什么>什么是有向距离场以及它能用来干什么<a hidden class=anchor aria-hidden=true href=#什么是有向距离场以及它能用来干什么>#</a></h2><p>有向距离场记录的是从一个点到集合边界的的距离值，其值的正负对应该点在集合外部或内部。有向距离场有很广的应用范围可以用来简单的生成Voronoi图形，可以用来做全局光照的计算，可以用来做两个形状的平滑的变形，可以用来做高清晰度的字体，也可以用来做Ray March（虽然我认为不如直接光线追踪求交来的效率高）。像原神就使用了SDF的方法，生成了角色脸部的阴影图，从而让角色脸部的阴影能自然的变化。</p><h2 id=那么什么又是jump-flooding-algorithm呢>那么什么又是Jump Flooding Algorithm呢<a hidden class=anchor aria-hidden=true href=#那么什么又是jump-flooding-algorithm呢>#</a></h2><p>Jump Flooding Algorithm是荣国栋在他的博士论文<a href=https://www.comp.nus.edu.sg/~tants/jfa/rong-guodong-phd-thesis.pdf>Jump Flooding Algorithm On Graphics Hardware And Its Applications</a>提出的一种在GPU上运行的能够快速传播某个像素的信息到其他像素的算法。</p><p>普通的Flooding算法在一次运行中，固定向相邻的一个像素的像素传播信息，而Jump Flooding则是按照2的幂次递增或是递减来传播信息。这和之前提到的并行计算——Reduction的想法差不多。下图演示了普通的Flooding和Jump Flooding的过程：
+<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>使用Compute Shader计算有向距离场 | ZZNEWCLEAR13</title>
+<meta name=keywords content="Compute Shader,Signed Distance Field,Jump Flooding Algorithm"><meta name=description content="使用Jump Flooding Algorithm来对一张图片计算有向距离场."><meta name=author content="zznewclear13"><link rel=canonical href=https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/><link crossorigin=anonymous href=/assets/css/stylesheet.css rel="preload stylesheet" as=style><link rel=icon href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=32x32 href=https://zznewclear13.github.io/favicon.ico><link rel=apple-touch-icon href=https://zznewclear13.github.io/favicon.ico><link rel=mask-icon href=https://zznewclear13.github.io/favicon.ico><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><link rel=alternate hreflang=en href=https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/><noscript><style>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--code-block-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><script>var doNotTrack=!1;doNotTrack||(function(e,t,n,s,o,i,a){e.GoogleAnalyticsObject=o,e[o]=e[o]||function(){(e[o].q=e[o].q||[]).push(arguments)},e[o].l=1*new Date,i=t.createElement(n),a=t.getElementsByTagName(n)[0],i.async=1,i.src=s,a.parentNode.insertBefore(i,a)}(window,document,"script","https://www.google-analytics.com/analytics.js","ga"),ga("create","UA-157509723-1","auto"),ga("send","pageview"))</script><meta property="og:title" content="使用Compute Shader计算有向距离场"><meta property="og:description" content="使用Jump Flooding Algorithm来对一张图片计算有向距离场."><meta property="og:type" content="article"><meta property="og:url" content="https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/"><meta property="og:image" content="https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/posts/images/SignedDistanceField.jpg"><meta property="article:section" content="posts"><meta property="article:published_time" content="2021-06-21T19:00:00+08:00"><meta property="article:modified_time" content="2021-06-21T19:00:00+08:00"><meta property="og:site_name" content="ZZNEWCLEAR13"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/posts/images/SignedDistanceField.jpg"><meta name=twitter:title content="使用Compute Shader计算有向距离场"><meta name=twitter:description content="使用Jump Flooding Algorithm来对一张图片计算有向距离场."><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://zznewclear13.github.io/posts/"},{"@type":"ListItem","position":2,"name":"使用Compute Shader计算有向距离场","item":"https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"使用Compute Shader计算有向距离场","name":"使用Compute Shader计算有向距离场","description":"使用Jump Flooding Algorithm来对一张图片计算有向距离场.","keywords":["Compute Shader","Signed Distance Field","Jump Flooding Algorithm"],"articleBody":"什么是有向距离场以及它能用来干什么 有向距离场记录的是从一个点到集合边界的的距离值，其值的正负对应该点在集合外部或内部。有向距离场有很广的应用范围可以用来简单的生成Voronoi图形，可以用来做全局光照的计算，可以用来做两个形状的平滑的变形，可以用来做高清晰度的字体，也可以用来做Ray March（虽然我认为不如直接光线追踪求交来的效率高）。像原神就使用了SDF的方法，生成了角色脸部的阴影图，从而让角色脸部的阴影能自然的变化。\n那么什么又是Jump Flooding Algorithm呢 Jump Flooding Algorithm是荣国栋在他的博士论文Jump Flooding Algorithm On Graphics Hardware And Its Applications提出的一种在GPU上运行的能够快速传播某个像素的信息到其他像素的算法。\n普通的Flooding算法在一次运行中，固定向相邻的一个像素的像素传播信息，而Jump Flooding则是按照2的幂次递增或是递减来传播信息。这和之前提到的并行计算——Reduction的想法差不多。下图演示了普通的Flooding和Jump Flooding的过程： 使用JFA计算一张2D图片对应的SDF贴图 首先在Unity中创建JumpFlooding.cs, JFAComputeShader.compute, 和JFAVisualize.shader，分别用来执行Compute Shader，使用JFA算法计算SDF和可视化JFA算法的结果。\n这里使用一张RGB通道为灰色，Alpha通道写着“JFA”的贴图作为我们2D图片的输入。 整体思路和需要注意的事项 先从简单实现功能上来考虑，暂时忽略掉抗锯齿的需求，直接对Alpha通道的值按照0.5来划分出图形的内部和外部，大于等于0.5为外部，小于0.5为内部。 SDF需要要计算距离，这里使用像素点中心到另一个像素点中心的距离（也可以使用像素点左下角到另一个像素点左下角的距离，不过为了明确起见，还是加上这半个像素的偏移比较好）。距离可以用uv的大小来表示，也可以用像素数量来表示，针对图像长宽不同的情况，这里以一个像素宽度为1来表示两个像素点的距离。在最后采样JFA的Render Texture的时候，也要注意使用sampler_PointClamp来进行采样，计算距离时也不能仅仅使用uv来计算，而是要使用像素中间的点的位置来进行计算。 普通的JFA算法会使用到Render Texture的两个通道，来标记像素对应的最近边界像素的UV，由于记录的是UV的数值而不是颜色信息，Render Texture要储存在线性空间中。由于要同时计算内部和外部的点到边界的有向距离，JFA算法会使用到Render Texture全部的四个通道，这里使用前两位记录位于内部的像素对应的边界像素的坐标，用后两位记录位于外部的像素对应的边界像素的坐标，即对于内部的像素(nearestUV.x, nearestUV.y, Z, W)，对于外部的像素(X, Y, nearestUV.x, nearestUV.y)，XYZW则可以用来表示该点为最初始的内外部的点、包含JFA传递的信息的点。不包含JFA传递的信息的点。 在JFA计算之前，需要先让贴图对应的点包含JFA信息，也就是说，对于内部的点初始化为(UV.x, UV.y, -1, -1)，对于外部的点初始化为(-1, -1, UV.x, UV.y)。这要求我们使用的Render Texture格式为至少R16G16B16A16 SFloat。 在JFA的计算中，以外部的像素点为例，所进行的操作是：采样上次经过JFA操作的Render Texture；根据XY通道判断该点在边界的内部还是外部，内部就跳过；对外部的像素点，通过XY通道判断是否已包含JFA的信息，如果包含，根据ZW通道计算出当前点到其包含的最近像素的距离，如果不包含，将这个距离设置为一个极大的常数；分别采样距离像素点2的幂次的距离的八个像素，判断这些像素是否已包含JFA的信息，如果不包含，采样下一个点，如果包含，根据这些像素的ZW通道计算出当前点到这些像素包含的最近像素的距离，并和上一步算出的距离进行比较，如果小于上一步算出的距离，则证明该像素对应的最近像素为周围点包含的像素，更新该像素的ZW通道，并且将XY通道标记成已包含JFA的信息。 采样周边像素的步长从2D贴图的长宽的一半向上取整开始，每次JFA都取上一步步长的一半向上取整作为新的步长，一直进行到步长为(1, 1)，进行最后一次JFA计算。 经过JFA计算之后，还需要将分别表示内部的点对应的最近像素的UV和外部的点对应的最近像素的UV结合起来，储存为一张贴图，可以是(nearestUV.x, nearestUV.y, 0, inside?1:0)，也可以是(distance * inside?-1:1, 1)。 应该是跟当前平台有关，有时候会出现贴图上下颠倒的情况，可以用UNITY_UV_STARTS_AT_TOP来协助解决，不过compute shader可能需要自己启用这个宏，这里就直接硬写在shader里，不做平台判断了。 JFAComputeShader.compute 根据上面的整体思路，我们需要三个kernel，一个用来初始化，一个做JFA计算，最后一个用来合成最后的贴图。Compute Shader的关键字需要Unity 2020以上（我也不知道具体哪个版本）才能有，这里就暂时用UNITY_2020_2_OR_NEWER这个宏来屏蔽了。\n#pragma kernel CopyUVMain #define PIXEL_OFFSET 0.5 Texture2D\u003cfloat4\u003e _InputTexture; RWTexture2D\u003cfloat4\u003e _OutputTexture; float4 _TextureSize; float _Channel; [numthreads(8, 8, 1)] void CopyUVMain(uint3 id : SV_DispatchThreadID) { float2 samplePosition = id.xy + PIXEL_OFFSET; if (any(samplePosition \u003e= _TextureSize.xy)) return; float4 inputTexture = _InputTexture.Load(float3(id.xy, 0)); float determin = 0; switch ((uint)_Channel) { case 0: determin = inputTexture.r; break; case 1: determin = inputTexture.g; break; case 2: determin = inputTexture.b; break; case 3: determin = inputTexture.a; break; default: break; } if (determin \u003e= 0.5) { _OutputTexture[id.xy] = float4(-1, -1, samplePosition.x * _TextureSize.z, samplePosition.y * _TextureSize.w); } else { _OutputTexture[id.xy] = float4(samplePosition.x * _TextureSize.z, samplePosition.y * _TextureSize.w, -1, -1); } } #pragma kernel JFAMain float2 _Step; static int2 directions[] = { int2(-1, -1), int2(-1, 0), int2(-1, 1), int2(0, -1), int2(0, 1), int2(1, -1), int2(1, 0), int2(1, 1) }; float4 JFAOutside(float4 inputTex, float2 idxy) { float4 outputTex = inputTex; //cull inside if (inputTex.x != -1) { float2 nearestUV = inputTex.zw; float minDistance = 1e16; //if had min distance in previous flooding if (inputTex.z != -1) { minDistance = length(idxy + PIXEL_OFFSET - nearestUV * _TextureSize.xy); } bool hasMin = false; for (uint i = 0; i \u003c 8; i++) { uint2 sampleOffset = idxy + directions[i] * _Step; sampleOffset = clamp(sampleOffset, 0, _TextureSize.xy - 1); float4 offsetTexture = _InputTexture.Load(float3(sampleOffset, 0)); //if had min distance in previous flooding if (offsetTexture.z != -1) { float2 tempUV = offsetTexture.zw; float tempDistance = length(idxy + PIXEL_OFFSET - tempUV * _TextureSize.xy); if (tempDistance \u003c minDistance) { hasMin = true; minDistance = tempDistance; nearestUV = tempUV; } } } if (hasMin) { outputTex = float4(inputTex.xy, nearestUV); } } return outputTex; } float4 JFAInside(float4 inputTex, float2 idxy) { float4 outputTex = inputTex; //cull outside if (inputTex.z != -1) { float2 nearestUV = inputTex.xy; float minDistance = 1e16; //if had min distance in previous flooding if (inputTex.x != -1) { minDistance = length(idxy + PIXEL_OFFSET - nearestUV * _TextureSize.xy); } bool hasMin = false; for (uint i = 0; i \u003c 8; i++) { uint2 sampleOffset = idxy + directions[i] * _Step; sampleOffset = clamp(sampleOffset, 0, _TextureSize.xy - 1); float4 offsetTexture = _InputTexture.Load(float3(sampleOffset, 0)); //if had min distance in previous flooding if (offsetTexture.x != -1) { float2 tempUV = offsetTexture.xy; float tempDistance = length(idxy + PIXEL_OFFSET - tempUV * _TextureSize.xy); if (tempDistance \u003c minDistance) { hasMin = true; minDistance = tempDistance; nearestUV = tempUV; } } } if (hasMin) { outputTex = float4(nearestUV, inputTex.zw); } } return outputTex; } [numthreads(8,8,1)] void JFAMain(uint3 id : SV_DispatchThreadID) { float2 samplePosition = id.xy + PIXEL_OFFSET; if (any(samplePosition \u003e= _TextureSize.xy)) return; float4 inputTexture = _InputTexture.Load(float3(id.xy, 0)); float4 outSide = JFAOutside(inputTexture, id.xy); _OutputTexture[id.xy] = JFAInside(outSide, id.xy); } #pragma kernel ComposeMain Texture2D\u003cfloat4\u003e _OriginalTexture; #if UNITY_2020_2_OR_NEWER #pragma multi_compile _USE_GRAYSCALE #else #define _USE_GRAYSCALE 0 #endif [numthreads(8, 8, 1)] void ComposeMain(uint3 id : SV_DispatchThreadID) { uint2 reverseY = id.xy; reverseY = uint2(id.x, _TextureSize.y - 1 - id.y); float4 inputTexture = _InputTexture.Load(float3(reverseY, 0)); float4 originalTexture = _OriginalTexture.Load(float3(reverseY, 0)); float determin = 0; switch ((uint)_Channel) { case 0: determin = originalTexture.r; break; case 1: determin = originalTexture.g; break; case 2: determin = originalTexture.b; break; case 3: determin = originalTexture.a; break; default: break; } #if _USE_GRAYSCALE float distance = 0; if (determin \u003e= 0.5) { distance = -length(reverseY + PIXEL_OFFSET - inputTexture.xy * _TextureSize.xy); _OutputTexture[id.xy] = float4(distance, distance, distance, 1); } else { distance = length(reverseY + PIXEL_OFFSET - inputTexture.zw * _TextureSize.xy); _OutputTexture[id.xy] = float4(distance, distance, distance, 0); } #else if (determin \u003e= 0.5) { _OutputTexture[id.xy] = float4(inputTexture.xy, 0, 1); } else { _OutputTexture[id.xy] = float4(inputTexture.zw, 0, 0); } #endif } JumpFlooding.cs C#脚本没什么特殊的地方了，只要准备好Render Texture和各类参数，传递给Compute Shader就好了。为了方便可视化，这里使用了MonoBehaviour的Coroutine，需要点击play之后在点击脚本里的\"Calculate SDF\"。这里保存的是记录了对应的像素点的UV的贴图，这样可以用jpg或者png来保存，如果要保存记录了有向距离的灰度贴图，就需要保存为float类型的exr格式了。\nusing System.Collections; using UnityEngine; using UnityEditor; public class JumpFlooding : MonoBehaviour { enum Channels { R, G, B, A } public Texture inputTexture; public ComputeShader computeShader; public float updateTime; public MeshRenderer meshRenderer; public bool useGrayScale = false; private RenderTexture[] renderTextures; private static void EnsureArray(ref T[] array, int size, T initialValue = default(T)) { if (array == null || array.Length != size) { array = new T[size]; for (int i = 0; i != size; i++) array[i] = initialValue; } } private static void EnsureRenderTexture(ref RenderTexture rt, RenderTextureDescriptor descriptor, string RTName) { if (rt != null \u0026\u0026 (rt.width != descriptor.width || rt.height != descriptor.height)) { RenderTexture.ReleaseTemporary(rt); rt = null; } if (rt == null) { RenderTextureDescriptor desc = descriptor; desc.depthBufferBits = 0; desc.msaaSamples = 1; rt = RenderTexture.GetTemporary(desc); rt.name = RTName; if (!rt.IsCreated()) rt.Create(); } } public static void EnsureRT(ref RenderTexture[] rts, RenderTextureDescriptor descriptor) { EnsureArray(ref rts, 2); EnsureRenderTexture(ref rts[0], descriptor, \"Froxel Tex One\"); EnsureRenderTexture(ref rts[1], descriptor, \"Froxel Tex Two\"); } public void Calculate() { StartCoroutine(CalculateCoroutine()); } public void CopyUV(Texture texture, RenderTexture renderTexture, uint channel) { int kernel = computeShader.FindKernel(\"CopyUVMain\"); computeShader.GetKernelThreadGroupSizes(kernel, out uint x, out uint y, out uint z); Vector3Int dispatchCounts = new Vector3Int(Mathf.CeilToInt((float)inputTexture.width / x), Mathf.CeilToInt((float)inputTexture.height / y), 1); computeShader.SetTexture(kernel, \"_InputTexture\", texture); computeShader.SetTexture(kernel, \"_OutputTexture\", renderTexture); computeShader.SetVector(\"_TextureSize\", new Vector4(texture.width, texture.height, 1.0f / texture.width, 1.0f / texture.height)); computeShader.SetFloat(\"_Channel\", (float)channel); computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z); } public void JFA(RenderTexture one, RenderTexture two, Vector2Int step, bool reverse) { int kernel = computeShader.FindKernel(\"JFAMain\"); computeShader.GetKernelThreadGroupSizes(kernel, out uint x, out uint y, out uint z); Vector3Int dispatchCounts = new Vector3Int(Mathf.CeilToInt((float)inputTexture.width / x), Mathf.CeilToInt((float)inputTexture.height / y), 1); if (reverse) { computeShader.SetTexture(kernel, \"_InputTexture\", two); computeShader.SetTexture(kernel, \"_OutputTexture\", one); } else { computeShader.SetTexture(kernel, \"_InputTexture\", one); computeShader.SetTexture(kernel, \"_OutputTexture\", two); } computeShader.SetVector(\"_TextureSize\", new Vector4(inputTexture.width, inputTexture.height, 1.0f / inputTexture.width, 1.0f / inputTexture.height)); computeShader.SetVector(\"_Step\", (Vector2)step); computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z); } public void Compose(RenderTexture one, RenderTexture two, Texture texture, uint channel, bool reverse) { int kernel = computeShader.FindKernel(\"ComposeMain\"); computeShader.GetKernelThreadGroupSizes(kernel, out uint x, out uint y, out uint z); Vector3Int dispatchCounts = new Vector3Int(Mathf.CeilToInt((float)inputTexture.width / x), Mathf.CeilToInt((float)inputTexture.height / y), 1); if (reverse) { computeShader.SetTexture(kernel, \"_InputTexture\", two); computeShader.SetTexture(kernel, \"_OutputTexture\", one); } else { computeShader.SetTexture(kernel, \"_InputTexture\", one); computeShader.SetTexture(kernel, \"_OutputTexture\", two); } computeShader.SetTexture(kernel, \"_OriginalTexture\", texture); computeShader.SetFloat(\"_Channel\", (float)channel); #if UNITY_2020_2_OR_NEWER if(useGrayScale) { computeShader.EnableKeyword(\"_USE_GRAYSCALE\"); } else { computeShader.DisableKeyword(\"_USE_GRAYSCALE\"); } #endif computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z); } public void Visualize(RenderTexture one, RenderTexture two, bool reverse) { MaterialPropertyBlock mpb = new MaterialPropertyBlock(); mpb.SetTexture(\"_MainTex\", reverse ? two : one); meshRenderer.SetPropertyBlock(mpb); } static public void SaveToTexture(string name, RenderTexture renderTexture, bool alphaIsTransparency) { RenderTexture currentRT = RenderTexture.active; RenderTexture.active = renderTexture; Texture2D texture2D = new Texture2D(renderTexture.width, renderTexture.height, TextureFormat.RGBAFloat, false); texture2D.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0); RenderTexture.active = currentRT; System.IO.Directory.CreateDirectory(\"Assets/JumpFlooding/\"); byte[] bytes = texture2D.EncodeToEXR(); string path = \"Assets/JumpFlooding/\" + name + \".exr\"; System.IO.File.WriteAllBytes(path, bytes); TextureImporter importer = (TextureImporter)AssetImporter.GetAtPath(path); if (importer != null) { importer.alphaIsTransparency = alphaIsTransparency; importer.sRGBTexture = false; importer.mipmapEnabled = false; AssetDatabase.ImportAsset(path); } Debug.Log(\"Saved to \" + path); AssetDatabase.Refresh(); } IEnumerator CalculateCoroutine() { RenderTextureDescriptor desc = new RenderTextureDescriptor { width = inputTexture.width, height = inputTexture.height, volumeDepth = 1, msaaSamples = 1, graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat, enableRandomWrite = true, dimension = UnityEngine.Rendering.TextureDimension.Tex2D, sRGB = false }; EnsureRT(ref renderTextures, desc); RenderTexture rtOne = renderTextures[0]; RenderTexture rtTwo = renderTextures[1]; CopyUV(inputTexture, rtOne, (uint)Channels.A); yield return new WaitForSeconds(updateTime); Shader.DisableKeyword(\"RENDERTEXTURE_UPSIDE_DOWN\"); Vector2Int step = new Vector2Int((inputTexture.width + 1) \u003e\u003e 1, (inputTexture.height + 1) \u003e\u003e 1); bool reverse = false; do { Debug.Log(step); JFA(rtOne, rtTwo, step, reverse); reverse = !reverse; Visualize(rtOne, rtTwo, reverse); step = new Vector2Int((step.x + 1) \u003e\u003e 1, (step.y + 1) \u003e\u003e 1); yield return new WaitForSeconds(updateTime); } while (step.x \u003e 1 || step.y \u003e 1); Debug.Log(new Vector2Int(1, 1)); JFA(rtOne, rtTwo, new Vector2Int(1, 1), reverse); reverse = !reverse; Visualize(rtOne, rtTwo, reverse); yield return new WaitForSeconds(updateTime); Debug.Log(new Vector2Int(1, 1)); JFA(rtOne, rtTwo, new Vector2Int(1, 1), reverse); reverse = !reverse; Visualize(rtOne, rtTwo, reverse); yield return new WaitForSeconds(updateTime); Compose(rtOne, rtTwo, inputTexture, (uint)Channels.A, reverse); reverse = !reverse; Shader.EnableKeyword(\"RENDERTEXTURE_UPSIDE_DOWN\"); Visualize(rtOne, rtTwo, reverse); SaveToTexture(\"WhatIsThis\", reverse ? rtTwo : rtOne, false); } } [CustomEditor(typeof(JumpFlooding))] public class JumpFloodingEditor : Editor { private JumpFlooding jumpFlooding; private void OnEnable() { jumpFlooding = (JumpFlooding)target; } public override void OnInspectorGUI() { base.OnInspectorGUI(); using (new EditorGUI.DisabledGroupScope(!Application.isPlaying)) { if (GUILayout.Button(\"Calculate SDF\", GUILayout.Height(30))) { jumpFlooding.Calculate(); } } } } JFAVisualize.shader 这个shader应该用在宽高比2:1的Mesh上，这样左半部分是记录了最近像素的uv的贴图，有伴部分是记录了带方向的距离的灰度贴图或者其描边的可视化。需要注意采样的方式和使用像素点中心来计算距离。\nShader \"Unlit/JFAVisualize\" { Properties { _MainTex (\"Texture\", 2D) = \"white\" {} _Distance (\"Distance\", float) = 10 } HLSLINCLUDE #include \"Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl\" #include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl\" #pragma multi_compile _ RENDERTEXTURE_UPSIDE_DOWN Texture2D _MainTex; float4 _MainTex_TexelSize; SamplerState sampler_PointClamp; float _Distance; struct Attributes { float4 positionOS : POSITION; float2 texcoord : TEXCOORD0; }; struct Varyings { float4 positionCS : SV_POSITION; float2 uv : TEXCOORD0; }; Varyings Vert(Attributes input) { Varyings output = (Varyings)0; VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz); output.positionCS = vertexInput.positionCS; output.uv = input.texcoord; return output; } float4 Frag(Varyings input) : SV_TARGET { float2 upsideDown = input.uv; #if RENDERTEXTURE_UPSIDE_DOWN upsideDown = float2(input.uv.x, 1 - input.uv.y); #endif float2 uvOne = float2(upsideDown.x * 2, upsideDown.y); float2 uvTwo = float2(upsideDown.x * 2 - 1, upsideDown.y); float4 returnColor = 0; if (input.uv.x \u003e= 0.5) { float4 texColor = _MainTex.SampleLevel(sampler_PointClamp, uvTwo, 0); #if RENDERTEXTURE_UPSIDE_DOWN float2 realTexcoord = float2(input.uv.x * 2 - 1, input.uv.y); realTexcoord = floor(realTexcoord* _MainTex_TexelSize.zw) + 0.5; float distance = length(texColor.xy * _MainTex_TexelSize.zw - realTexcoord); #else float2 realTexcoord = uvTwo; realTexcoord = floor(realTexcoord * _MainTex_TexelSize.zw) + 0.5; float distance = length(texColor.xy * _MainTex_TexelSize.zw - realTexcoord); #endif float grayScale = smoothstep(_Distance, 0, distance); returnColor = float4(grayScale, grayScale, grayScale, 1); } else { returnColor = _MainTex.SampleLevel(sampler_PointClamp, uvOne, 0); } return returnColor; } ENDHLSL SubShader { Tags { \"RenderType\"=\"Opaque\" } LOD 100 Pass { Name \"JFA Visualize Pass\" Tags{\"LightMode\" = \"UniversalForward\"} Cull Back ZTest LEqual ZWrite On HLSLPROGRAM #pragma vertex Vert #pragma fragment Frag ENDHLSL } } } ","wordCount":"1568","inLanguage":"en","image":"https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/posts/images/SignedDistanceField.jpg","datePublished":"2021-06-21T19:00:00+08:00","dateModified":"2021-06-21T19:00:00+08:00","author":{"@type":"Person","name":"zznewclear13"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/"},"publisher":{"@type":"Organization","name":"ZZNEWCLEAR13","logo":{"@type":"ImageObject","url":"https://zznewclear13.github.io/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add("dark"):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove("dark"):window.matchMedia("(prefers-color-scheme: dark)").matches&&document.body.classList.add("dark")</script><header class=header><nav class=nav><div class=logo><a href=https://zznewclear13.github.io/ accesskey=h title="ZZNEWCLEAR13 (Alt + H)"><img src=https://zznewclear13.github.io/apple-touch-icon.png alt aria-label=logo height=35>ZZNEWCLEAR13</a><div class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div><ul id=menu><li><a href=https://zznewclear13.github.io/now/ title=进行时><span>进行时</span></a></li><li><a href=https://zznewclear13.github.io/tags/ title=标签><span>标签</span></a></li><li><a href=https://zznewclear13.github.io/categories/ title=分类><span>分类</span></a></li><li><a href=https://zznewclear13.github.io/links/ title=友情链接><span>友情链接</span></a></li><li><a href=https://zznewclear13.github.io/search/ title="🔎 (Alt + /)" accesskey=/><span>🔎</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://zznewclear13.github.io/>Home</a>&nbsp;»&nbsp;<a href=https://zznewclear13.github.io/posts/>Posts</a></div><h1 class="post-title entry-hint-parent">使用Compute Shader计算有向距离场</h1><div class=post-description>使用Jump Flooding Algorithm来对一张图片计算有向距离场.</div><div class=post-meta><span title='2021-06-21 19:00:00 +0800 CST'>June 21, 2021</span>&nbsp;·&nbsp;zznewclear13&nbsp;|&nbsp;<a href=https://github.com/zznewclear13/zznewclear13.com/blob/main/content/posts/calculate-signed-distance-field-using-compute-shader.md rel="noopener noreferrer" target=_blank>编辑</a></div></header><figure class=entry-cover><img loading=eager src=https://zznewclear13.github.io/posts/images/SignedDistanceField.jpg alt="Signed Distance Field Cover"><p>Signed Distance Field Result</p></figure><div class=toc><details open><summary accesskey=c title="(Alt + C)"><div class=details>使用Compute Shader计算有向距离场</div></summary><div class=inner><ul><li><a href=#%e4%bb%80%e4%b9%88%e6%98%af%e6%9c%89%e5%90%91%e8%b7%9d%e7%a6%bb%e5%9c%ba%e4%bb%a5%e5%8f%8a%e5%ae%83%e8%83%bd%e7%94%a8%e6%9d%a5%e5%b9%b2%e4%bb%80%e4%b9%88 aria-label=什么是有向距离场以及它能用来干什么>什么是有向距离场以及它能用来干什么</a></li><li><a href=#%e9%82%a3%e4%b9%88%e4%bb%80%e4%b9%88%e5%8f%88%e6%98%afjump-flooding-algorithm%e5%91%a2 aria-label="那么什么又是Jump Flooding Algorithm呢">那么什么又是Jump Flooding Algorithm呢</a></li><li><a href=#%e4%bd%bf%e7%94%a8jfa%e8%ae%a1%e7%ae%97%e4%b8%80%e5%bc%a02d%e5%9b%be%e7%89%87%e5%af%b9%e5%ba%94%e7%9a%84sdf%e8%b4%b4%e5%9b%be aria-label=使用JFA计算一张2D图片对应的SDF贴图>使用JFA计算一张2D图片对应的SDF贴图</a><ul><li><a href=#%e6%95%b4%e4%bd%93%e6%80%9d%e8%b7%af%e5%92%8c%e9%9c%80%e8%a6%81%e6%b3%a8%e6%84%8f%e7%9a%84%e4%ba%8b%e9%a1%b9 aria-label=整体思路和需要注意的事项>整体思路和需要注意的事项</a></li><li><a href=#jfacomputeshadercompute aria-label=JFAComputeShader.compute>JFAComputeShader.compute</a></li><li><a href=#jumpfloodingcs aria-label=JumpFlooding.cs>JumpFlooding.cs</a></li><li><a href=#jfavisualizeshader aria-label=JFAVisualize.shader>JFAVisualize.shader</a></li></ul></li></ul></div></details></div><div class=post-content><h2 id=什么是有向距离场以及它能用来干什么>什么是有向距离场以及它能用来干什么<a hidden class=anchor aria-hidden=true href=#什么是有向距离场以及它能用来干什么>#</a></h2><p>有向距离场记录的是从一个点到集合边界的的距离值，其值的正负对应该点在集合外部或内部。有向距离场有很广的应用范围可以用来简单的生成Voronoi图形，可以用来做全局光照的计算，可以用来做两个形状的平滑的变形，可以用来做高清晰度的字体，也可以用来做Ray March（虽然我认为不如直接光线追踪求交来的效率高）。像原神就使用了SDF的方法，生成了角色脸部的阴影图，从而让角色脸部的阴影能自然的变化。</p><h2 id=那么什么又是jump-flooding-algorithm呢>那么什么又是Jump Flooding Algorithm呢<a hidden class=anchor aria-hidden=true href=#那么什么又是jump-flooding-algorithm呢>#</a></h2><p>Jump Flooding Algorithm是荣国栋在他的博士论文<a href=https://www.comp.nus.edu.sg/~tants/jfa/rong-guodong-phd-thesis.pdf>Jump Flooding Algorithm On Graphics Hardware And Its Applications</a>提出的一种在GPU上运行的能够快速传播某个像素的信息到其他像素的算法。</p><p>普通的Flooding算法在一次运行中，固定向相邻的一个像素的像素传播信息，而Jump Flooding则是按照2的幂次递增或是递减来传播信息。这和之前提到的并行计算——Reduction的想法差不多。下图演示了普通的Flooding和Jump Flooding的过程：
 <img loading=lazy src=../images/NormalFlooding.jpg#center alt="Normal Flooding">
-<img loading=lazy src=../images/JumpFlooding.jpg#center alt="Jump Flooding"></p><h2 id=使用jfa计算一张2d图片对应的sdf贴图>使用JFA计算一张2D图片对应的SDF贴图<a hidden class=anchor aria-hidden=true href=#使用jfa计算一张2d图片对应的sdf贴图>#</a></h2><p>首先在Unity中创建<code>JumpFlooding.cs</code>, <code>JFAComputeShader.compute</code>, 和<code>JFAVisualize.shader</code>，分别用来执行Compute Shader，使用JFA算法计算SDF和可视化JFA算法的结果。</p><p>这里使用一张RGB通道为灰色，Alpha通道写着“JFA”的贴图作为我们2D图片的输入。<figure><img loading=lazy src=../images/JFAImage.png#center width=200px></figure></p><h3 id=整体思路和需要注意的事项>整体思路和需要注意的事项<a hidden class=anchor aria-hidden=true href=#整体思路和需要注意的事项>#</a></h3><ol><li>先从简单实现功能上来考虑，暂时忽略掉抗锯齿的需求，直接对Alpha通道的值按照0.5来划分出图形的内部和外部，大于等于0.5为外部，小于0.5为内部。</li><li>SDF需要要计算距离，这里使用像素点中心到另一个像素点中心的距离（也可以使用像素点左下角到另一个像素点左下角的距离，不过为了明确起见，还是加上这半个像素的偏移比较好）。距离可以用uv的大小来表示，也可以用像素数量来表示，针对图像长宽不同的情况，这里以一个像素宽度为1来表示两个像素点的距离。在最后采样JFA的Render Texture的时候，也要注意使用sampler_PointClamp来进行采样，计算距离时也不能仅仅使用uv来计算，而是要使用像素中间的点的位置来进行计算。</li><li>普通的JFA算法会使用到Render Texture的两个通道，来标记像素对应的最近边界像素的UV，由于记录的是UV的数值而不是颜色信息，Render Texture要储存在线性空间中。由于要同时计算内部和外部的点到边界的有向距离，JFA算法会使用到Render Texture全部的四个通道，这里使用前两位记录位于内部的像素对应的边界像素的坐标，用后两位记录位于外部的像素对应的边界像素的坐标，即对于内部的像素(nearestUV.x, nearestUV.y, Z, W)，对于外部的像素(X, Y, nearestUV.x, nearestUV.y)，XYZW则可以用来表示该点为最初始的内外部的点、包含JFA传递的信息的点。不包含JFA传递的信息的点。</li><li>在JFA计算之前，需要先让贴图对应的点包含JFA信息，也就是说，对于内部的点初始化为(UV.x, UV.y, -1, -1)，对于外部的点初始化为(-1, -1, UV.x, UV.y)。这要求我们使用的Render Texture格式为至少R16G16B16A16 SFloat。</li><li>在JFA的计算中，以外部的像素点为例，所进行的操作是：采样上次经过JFA操作的Render Texture；根据XY通道判断该点在边界的内部还是外部，内部就跳过；对外部的像素点，通过XY通道判断是否已包含JFA的信息，如果包含，根据ZW通道计算出当前点到其包含的最近像素的距离，如果不包含，将这个距离设置为一个极大的常数；分别采样距离像素点2的幂次的距离的八个像素，判断这些像素是否已包含JFA的信息，如果不包含，采样下一个点，如果包含，根据这些像素的ZW通道计算出当前点到这些像素包含的最近像素的距离，并和上一步算出的距离进行比较，如果小于上一步算出的距离，则证明该像素对应的最近像素为周围点包含的像素，更新该像素的ZW通道，并且将XY通道标记成已包含JFA的信息。</li><li>采样周边像素的步长从2D贴图的长宽的一半向上取整开始，每次JFA都取上一步步长的一半向上取整作为新的步长，一直进行到步长为(1, 1)，进行最后一次JFA计算。</li><li>经过JFA计算之后，还需要将分别表示内部的点对应的最近像素的UV和外部的点对应的最近像素的UV结合起来，储存为一张贴图，可以是(nearestUV.x, nearestUV.y, 0, inside?1:0)，也可以是(distance * inside?-1:1, 1)。</li><li>应该是跟当前平台有关，有时候会出现贴图上下颠倒的情况，可以用UNITY_UV_STARTS_AT_TOP来协助解决，不过compute shader可能需要自己启用这个宏，这里就直接硬写在shader里，不做平台判断了。</li></ol><h3 id=jfacomputeshadercompute>JFAComputeShader.compute<a hidden class=anchor aria-hidden=true href=#jfacomputeshadercompute>#</a></h3><p>根据上面的整体思路，我们需要三个kernel，一个用来初始化，一个做JFA计算，最后一个用来合成最后的贴图。Compute Shader的关键字需要Unity 2020以上（我也不知道具体哪个版本）才能有，这里就暂时用<code>UNITY_2020_2_OR_NEWER</code>这个宏来屏蔽了。</p><pre><code class=language-HLSL data-lang=HLSL>#pragma kernel CopyUVMain
-
-#define PIXEL_OFFSET 0.5
-
-Texture2D&lt;float4&gt; _InputTexture;
-RWTexture2D&lt;float4&gt; _OutputTexture;
-float4 _TextureSize;
-float _Channel;
-
-[numthreads(8, 8, 1)]
-void CopyUVMain(uint3 id : SV_DispatchThreadID)
-{
-	float2 samplePosition = id.xy + PIXEL_OFFSET;
-	if (any(samplePosition &gt;= _TextureSize.xy))
-		return;
-
-	float4 inputTexture = _InputTexture.Load(float3(id.xy, 0));
-	float determin = 0;
-	switch ((uint)_Channel)
-	{
-		case 0:
-			determin = inputTexture.r;
-			break;
-		case 1:
-			determin = inputTexture.g;
-			break;
-		case 2:
-			determin = inputTexture.b;
-			break;
-		case 3:
-			determin = inputTexture.a;
-			break;
-		default:
-			break;
-	}
-	if (determin &gt;= 0.5)
-	{
-		_OutputTexture[id.xy] = float4(-1, -1, samplePosition.x * _TextureSize.z, samplePosition.y * _TextureSize.w);
-	}
-	else
-	{
-		_OutputTexture[id.xy] = float4(samplePosition.x * _TextureSize.z, samplePosition.y * _TextureSize.w, -1, -1);
-	}   
-}
-</code></pre><pre><code class=language-HLSL data-lang=HLSL>#pragma kernel JFAMain
-
-float2 _Step;
-static int2 directions[] =
-{
-	int2(-1, -1),
-	int2(-1, 0),
-	int2(-1, 1),
-	int2(0, -1),
-	int2(0, 1),
-	int2(1, -1),
-	int2(1, 0),
-	int2(1, 1)
-};
-
-float4 JFAOutside(float4 inputTex, float2 idxy)
-{
-	float4 outputTex = inputTex;
-
-	//cull inside
-	if (inputTex.x != -1)
-	{
-		float2 nearestUV = inputTex.zw;
-		float minDistance = 1e16;
-
-		//if had min distance in previous flooding
-		if (inputTex.z != -1)
-		{
-			minDistance = length(idxy + PIXEL_OFFSET - nearestUV * _TextureSize.xy);
-		}
-
-
-		bool hasMin = false;
-		for (uint i = 0; i &lt; 8; i++)
-		{
-			uint2 sampleOffset = idxy + directions[i] * _Step;
-			sampleOffset = clamp(sampleOffset, 0, _TextureSize.xy - 1);
-			float4 offsetTexture = _InputTexture.Load(float3(sampleOffset, 0));
-			//if had min distance in previous flooding
-			if (offsetTexture.z != -1)
-			{
-				float2 tempUV = offsetTexture.zw;
-				float tempDistance = length(idxy + PIXEL_OFFSET - tempUV * _TextureSize.xy);
-				if (tempDistance &lt; minDistance)
-				{
-					hasMin = true;
-					minDistance = tempDistance;
-					nearestUV = tempUV;
-				}
-			}
-		}
-
-		if (hasMin)
-		{
-			outputTex = float4(inputTex.xy, nearestUV);
-		}
-	}
-	return outputTex;
-}
-
-float4 JFAInside(float4 inputTex, float2 idxy)
-{
-	float4 outputTex = inputTex;
-
-	//cull outside
-	if (inputTex.z != -1)
-	{
-		float2 nearestUV = inputTex.xy;
-		float minDistance = 1e16;
-
-		//if had min distance in previous flooding
-		if (inputTex.x != -1)
-		{
-			minDistance = length(idxy + PIXEL_OFFSET - nearestUV * _TextureSize.xy);
-		}
-
-
-		bool hasMin = false;
-		for (uint i = 0; i &lt; 8; i++)
-		{
-			uint2 sampleOffset = idxy + directions[i] * _Step;
-			sampleOffset = clamp(sampleOffset, 0, _TextureSize.xy - 1);
-			float4 offsetTexture = _InputTexture.Load(float3(sampleOffset, 0));
-			//if had min distance in previous flooding
-			if (offsetTexture.x != -1)
-			{
-				float2 tempUV = offsetTexture.xy;
-				float tempDistance = length(idxy + PIXEL_OFFSET - tempUV * _TextureSize.xy);
-				if (tempDistance &lt; minDistance)
-				{
-					hasMin = true;
-					minDistance = tempDistance;
-					nearestUV = tempUV;
-				}
-			}
-		}
-
-		if (hasMin)
-		{
-			outputTex = float4(nearestUV, inputTex.zw);
-		}
-	}
-	return outputTex;
-}
-
-[numthreads(8,8,1)]
-void JFAMain(uint3 id : SV_DispatchThreadID)
-{
-	float2 samplePosition = id.xy + PIXEL_OFFSET;
-	if (any(samplePosition &gt;= _TextureSize.xy))
-		return;
-
-	float4 inputTexture = _InputTexture.Load(float3(id.xy, 0));
-	float4 outSide = JFAOutside(inputTexture, id.xy);
-	_OutputTexture[id.xy] = JFAInside(outSide, id.xy);
-}
-</code></pre><pre><code class=language-HLSL data-lang=HLSL>#pragma kernel ComposeMain
-
-Texture2D&lt;float4&gt; _OriginalTexture;
-
-#if UNITY_2020_2_OR_NEWER
-#pragma multi_compile _USE_GRAYSCALE
-#else
-#define _USE_GRAYSCALE 0
-#endif
-
-[numthreads(8, 8, 1)]
-void ComposeMain(uint3 id : SV_DispatchThreadID)
-{
-	uint2 reverseY = id.xy;
-	reverseY = uint2(id.x, _TextureSize.y - 1 - id.y);
-
-	float4 inputTexture = _InputTexture.Load(float3(reverseY, 0));
-	float4 originalTexture = _OriginalTexture.Load(float3(reverseY, 0));
-	float determin = 0;
-	switch ((uint)_Channel)
-	{
-	case 0:
-		determin = originalTexture.r;
-		break;
-	case 1:
-		determin = originalTexture.g;
-		break;
-	case 2:
-		determin = originalTexture.b;
-		break;
-	case 3:
-		determin = originalTexture.a;
-		break;
-	default:
-		break;
-	}
-
-
-#if _USE_GRAYSCALE
-	float distance = 0;
-	if (determin &gt;= 0.5)
-	{
-		distance = -length(reverseY + PIXEL_OFFSET - inputTexture.xy * _TextureSize.xy);
-		_OutputTexture[id.xy] = float4(distance, distance, distance, 1);
-	}
-	else
-	{
-		distance = length(reverseY + PIXEL_OFFSET - inputTexture.zw * _TextureSize.xy);
-		_OutputTexture[id.xy] = float4(distance, distance, distance, 0);
-	}
-#else
-	if (determin &gt;= 0.5)
-	{
-		_OutputTexture[id.xy] = float4(inputTexture.xy, 0, 1);
-	}
-	else
-	{
-		_OutputTexture[id.xy] = float4(inputTexture.zw, 0, 0);
-	}
-#endif
-}
-</code></pre><h3 id=jumpfloodingcs>JumpFlooding.cs<a hidden class=anchor aria-hidden=true href=#jumpfloodingcs>#</a></h3><p>C#脚本没什么特殊的地方了，只要准备好Render Texture和各类参数，传递给Compute Shader就好了。为了方便可视化，这里使用了MonoBehaviour的Coroutine，需要点击play之后在点击脚本里的"Calculate SDF"。这里保存的是记录了对应的像素点的UV的贴图，这样可以用jpg或者png来保存，如果要保存记录了有向距离的灰度贴图，就需要保存为float类型的exr格式了。</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C# data-lang=C#><span style=color:#66d9ef>using</span> System.Collections;
-<span style=color:#66d9ef>using</span> UnityEngine;
-<span style=color:#66d9ef>using</span> UnityEditor;
-
-<span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>JumpFlooding</span> : MonoBehaviour
-{
-    <span style=color:#66d9ef>enum</span> Channels
-    {
-        R, G, B, A
-    }
-
-    <span style=color:#66d9ef>public</span> Texture inputTexture;
-    <span style=color:#66d9ef>public</span> ComputeShader computeShader;
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>float</span> updateTime;
-    <span style=color:#66d9ef>public</span> MeshRenderer meshRenderer;
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>bool</span> useGrayScale = <span style=color:#66d9ef>false</span>;
-
-    <span style=color:#66d9ef>private</span> RenderTexture[] renderTextures;
-
-    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> EnsureArray&lt;T&gt;(<span style=color:#66d9ef>ref</span> T[] array, <span style=color:#66d9ef>int</span> size, T initialValue = <span style=color:#66d9ef>default</span>(T))
-    {
-        <span style=color:#66d9ef>if</span> (array == <span style=color:#66d9ef>null</span> || array.Length != size)
-        {
-            array = <span style=color:#66d9ef>new</span> T[size];
-            <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i = <span style=color:#ae81ff>0</span>; i != size; i++)
-                array[i] = initialValue;
-        }
-    }
-
-    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> EnsureRenderTexture(<span style=color:#66d9ef>ref</span> RenderTexture rt, RenderTextureDescriptor descriptor, <span style=color:#66d9ef>string</span> RTName)
-    {
-        <span style=color:#66d9ef>if</span> (rt != <span style=color:#66d9ef>null</span> &amp;&amp; (rt.width != descriptor.width || rt.height != descriptor.height))
-        {
-            RenderTexture.ReleaseTemporary(rt);
-            rt = <span style=color:#66d9ef>null</span>;
-        }
-
-        <span style=color:#66d9ef>if</span> (rt == <span style=color:#66d9ef>null</span>)
-        {
-            RenderTextureDescriptor desc = descriptor;
-            desc.depthBufferBits = <span style=color:#ae81ff>0</span>;
-            desc.msaaSamples = <span style=color:#ae81ff>1</span>;
-            rt = RenderTexture.GetTemporary(desc);
-            rt.name = RTName;
-            <span style=color:#66d9ef>if</span> (!rt.IsCreated()) rt.Create();
-        }
-    }
-
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> EnsureRT(<span style=color:#66d9ef>ref</span> RenderTexture[] rts, RenderTextureDescriptor descriptor)
-    {
-        EnsureArray(<span style=color:#66d9ef>ref</span> rts, <span style=color:#ae81ff>2</span>);
-        EnsureRenderTexture(<span style=color:#66d9ef>ref</span> rts[<span style=color:#ae81ff>0</span>], descriptor, <span style=color:#e6db74>&#34;Froxel Tex One&#34;</span>);
-        EnsureRenderTexture(<span style=color:#66d9ef>ref</span> rts[<span style=color:#ae81ff>1</span>], descriptor, <span style=color:#e6db74>&#34;Froxel Tex Two&#34;</span>);
-    }
-
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> Calculate()
-    {
-        StartCoroutine(CalculateCoroutine());
-    }
-
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> CopyUV(Texture texture, RenderTexture renderTexture, <span style=color:#66d9ef>uint</span> channel)
-    {
-        <span style=color:#66d9ef>int</span> kernel = computeShader.FindKernel(<span style=color:#e6db74>&#34;CopyUVMain&#34;</span>);
-        computeShader.GetKernelThreadGroupSizes(kernel, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> x, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> y, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> z);
-        Vector3Int dispatchCounts = <span style=color:#66d9ef>new</span> Vector3Int(Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.width / x),
-                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.height / y),
-                                                    <span style=color:#ae81ff>1</span>);
-        computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, texture);
-        computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, renderTexture);
-        computeShader.SetVector(<span style=color:#e6db74>&#34;_TextureSize&#34;</span>, <span style=color:#66d9ef>new</span> Vector4(texture.width, texture.height, <span style=color:#ae81ff>1.0f</span> / texture.width, <span style=color:#ae81ff>1.0f</span> / texture.height));
-        computeShader.SetFloat(<span style=color:#e6db74>&#34;_Channel&#34;</span>, (<span style=color:#66d9ef>float</span>)channel);
-        computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z);
-    }
-
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> JFA(RenderTexture one, RenderTexture two, Vector2Int step, <span style=color:#66d9ef>bool</span> reverse)
-    {
-        <span style=color:#66d9ef>int</span> kernel = computeShader.FindKernel(<span style=color:#e6db74>&#34;JFAMain&#34;</span>);
-        computeShader.GetKernelThreadGroupSizes(kernel, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> x, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> y, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> z);
-        Vector3Int dispatchCounts = <span style=color:#66d9ef>new</span> Vector3Int(Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.width / x),
-                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.height / y),
-                                                    <span style=color:#ae81ff>1</span>);
-        <span style=color:#66d9ef>if</span> (reverse)
-        {
-            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, two);
-            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, one);
-        }
-        <span style=color:#66d9ef>else</span>
-        {
-            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, one);
-            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, two);
-        }
-        computeShader.SetVector(<span style=color:#e6db74>&#34;_TextureSize&#34;</span>, <span style=color:#66d9ef>new</span> Vector4(inputTexture.width, inputTexture.height, <span style=color:#ae81ff>1.0f</span> / inputTexture.width, <span style=color:#ae81ff>1.0f</span> / inputTexture.height));
-        computeShader.SetVector(<span style=color:#e6db74>&#34;_Step&#34;</span>, (Vector2)step);
-        computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z);
-    }
-
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> Compose(RenderTexture one, RenderTexture two, Texture texture, <span style=color:#66d9ef>uint</span> channel, <span style=color:#66d9ef>bool</span> reverse)
-    {
-        <span style=color:#66d9ef>int</span> kernel = computeShader.FindKernel(<span style=color:#e6db74>&#34;ComposeMain&#34;</span>);
-        computeShader.GetKernelThreadGroupSizes(kernel, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> x, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> y, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> z);
-        Vector3Int dispatchCounts = <span style=color:#66d9ef>new</span> Vector3Int(Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.width / x),
-                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.height / y),
-                                                    <span style=color:#ae81ff>1</span>);
-        <span style=color:#66d9ef>if</span> (reverse)
-        {
-            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, two);
-            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, one);
-        }
-        <span style=color:#66d9ef>else</span>
-        {
-            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, one);
-            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, two);
-        }
-        computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OriginalTexture&#34;</span>, texture);
-        computeShader.SetFloat(<span style=color:#e6db74>&#34;_Channel&#34;</span>, (<span style=color:#66d9ef>float</span>)channel);
-<span style=color:#75715e>#if UNITY_2020_2_OR_NEWER
-</span><span style=color:#75715e></span>        <span style=color:#66d9ef>if</span>(useGrayScale)
-        {
-            computeShader.EnableKeyword(<span style=color:#e6db74>&#34;_USE_GRAYSCALE&#34;</span>);
-        }
-        <span style=color:#66d9ef>else</span>
-        {
-            computeShader.DisableKeyword(<span style=color:#e6db74>&#34;_USE_GRAYSCALE&#34;</span>);
-        }
-<span style=color:#75715e>#endif
-</span><span style=color:#75715e></span>        computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z);
-    }
-
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> Visualize(RenderTexture one, RenderTexture two, <span style=color:#66d9ef>bool</span> reverse)
-    {
-        MaterialPropertyBlock mpb = <span style=color:#66d9ef>new</span> MaterialPropertyBlock();
-        mpb.SetTexture(<span style=color:#e6db74>&#34;_MainTex&#34;</span>, reverse ? two : one);
-        meshRenderer.SetPropertyBlock(mpb);
-    }
-
-    <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> SaveToTexture(<span style=color:#66d9ef>string</span> name, RenderTexture renderTexture, <span style=color:#66d9ef>bool</span> alphaIsTransparency)
-    {
-        RenderTexture currentRT = RenderTexture.active;
-        RenderTexture.active = renderTexture;
-        Texture2D texture2D = <span style=color:#66d9ef>new</span> Texture2D(renderTexture.width, renderTexture.height, TextureFormat.RGBAFloat, <span style=color:#66d9ef>false</span>);
-        texture2D.ReadPixels(<span style=color:#66d9ef>new</span> Rect(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, renderTexture.width, renderTexture.height), <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>);
-        RenderTexture.active = currentRT;
-
-        System.IO.Directory.CreateDirectory(<span style=color:#e6db74>&#34;Assets/JumpFlooding/&#34;</span>);
-        <span style=color:#66d9ef>byte</span>[] bytes = texture2D.EncodeToEXR();
-        <span style=color:#66d9ef>string</span> path = <span style=color:#e6db74>&#34;Assets/JumpFlooding/&#34;</span> + name + <span style=color:#e6db74>&#34;.exr&#34;</span>;
-        System.IO.File.WriteAllBytes(path, bytes);
-
-        TextureImporter importer = (TextureImporter)AssetImporter.GetAtPath(path);
-        <span style=color:#66d9ef>if</span> (importer != <span style=color:#66d9ef>null</span>)
-        {
-            importer.alphaIsTransparency = alphaIsTransparency;
-            importer.sRGBTexture = <span style=color:#66d9ef>false</span>;
-            importer.mipmapEnabled = <span style=color:#66d9ef>false</span>;
-            AssetDatabase.ImportAsset(path);
-        }
-
-        Debug.Log(<span style=color:#e6db74>&#34;Saved to &#34;</span> + path);
-        AssetDatabase.Refresh();
-    }
-
-
-    IEnumerator CalculateCoroutine()
-    {
-        RenderTextureDescriptor desc = <span style=color:#66d9ef>new</span> RenderTextureDescriptor
-        {
-            width = inputTexture.width,
-            height = inputTexture.height,
-            volumeDepth = <span style=color:#ae81ff>1</span>,
-            msaaSamples = <span style=color:#ae81ff>1</span>,
-            graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat,
-            enableRandomWrite = <span style=color:#66d9ef>true</span>,
-            dimension = UnityEngine.Rendering.TextureDimension.Tex2D,
-            sRGB = <span style=color:#66d9ef>false</span>
-        };
-
-        EnsureRT(<span style=color:#66d9ef>ref</span> renderTextures, desc);
-        RenderTexture rtOne = renderTextures[<span style=color:#ae81ff>0</span>];
-        RenderTexture rtTwo = renderTextures[<span style=color:#ae81ff>1</span>];
-
-        CopyUV(inputTexture, rtOne, (<span style=color:#66d9ef>uint</span>)Channels.A);
-
-        <span style=color:#66d9ef>yield</span> <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> WaitForSeconds(updateTime);
-
-        Shader.DisableKeyword(<span style=color:#e6db74>&#34;RENDERTEXTURE_UPSIDE_DOWN&#34;</span>);
-        Vector2Int step = <span style=color:#66d9ef>new</span> Vector2Int((inputTexture.width + <span style=color:#ae81ff>1</span>) &gt;&gt; <span style=color:#ae81ff>1</span>, (inputTexture.height + <span style=color:#ae81ff>1</span>) &gt;&gt; <span style=color:#ae81ff>1</span>);
-        <span style=color:#66d9ef>bool</span> reverse = <span style=color:#66d9ef>false</span>;
-
-        <span style=color:#66d9ef>do</span>
-        {
-            Debug.Log(step);
-            JFA(rtOne, rtTwo, step, reverse);
-            reverse = !reverse;
-            Visualize(rtOne, rtTwo, reverse);
-            step = <span style=color:#66d9ef>new</span> Vector2Int((step.x + <span style=color:#ae81ff>1</span>) &gt;&gt; <span style=color:#ae81ff>1</span>, (step.y + <span style=color:#ae81ff>1</span>) &gt;&gt; <span style=color:#ae81ff>1</span>);
-            <span style=color:#66d9ef>yield</span> <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> WaitForSeconds(updateTime);
-        } <span style=color:#66d9ef>while</span> (step.x &gt; <span style=color:#ae81ff>1</span> || step.y &gt; <span style=color:#ae81ff>1</span>);
-
-        Debug.Log(<span style=color:#66d9ef>new</span> Vector2Int(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>));
-        JFA(rtOne, rtTwo, <span style=color:#66d9ef>new</span> Vector2Int(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>), reverse);
-        reverse = !reverse;
-        Visualize(rtOne, rtTwo, reverse);
-        <span style=color:#66d9ef>yield</span> <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> WaitForSeconds(updateTime);
-
-        Debug.Log(<span style=color:#66d9ef>new</span> Vector2Int(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>));
-        JFA(rtOne, rtTwo, <span style=color:#66d9ef>new</span> Vector2Int(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>), reverse);
-        reverse = !reverse;
-        Visualize(rtOne, rtTwo, reverse);
-        <span style=color:#66d9ef>yield</span> <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> WaitForSeconds(updateTime);
-
-        Compose(rtOne, rtTwo, inputTexture, (<span style=color:#66d9ef>uint</span>)Channels.A, reverse);
-        reverse = !reverse;
-        Shader.EnableKeyword(<span style=color:#e6db74>&#34;RENDERTEXTURE_UPSIDE_DOWN&#34;</span>);
-        Visualize(rtOne, rtTwo, reverse);
-
-        SaveToTexture(<span style=color:#e6db74>&#34;WhatIsThis&#34;</span>, reverse ? rtTwo : rtOne, <span style=color:#66d9ef>false</span>);
-    }
-}
-<span style=color:#a6e22e>
-</span><span style=color:#a6e22e>[CustomEditor(typeof(JumpFlooding))]</span>
-<span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>JumpFloodingEditor</span> : Editor
-{
-    <span style=color:#66d9ef>private</span> JumpFlooding jumpFlooding;
-
-    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> OnEnable()
-    {
-        jumpFlooding = (JumpFlooding)target;
-    }
-
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>override</span> <span style=color:#66d9ef>void</span> OnInspectorGUI()
-    {
-        <span style=color:#66d9ef>base</span>.OnInspectorGUI();
-        <span style=color:#66d9ef>using</span> (<span style=color:#66d9ef>new</span> EditorGUI.DisabledGroupScope(!Application.isPlaying))
-        {
-            <span style=color:#66d9ef>if</span> (GUILayout.Button(<span style=color:#e6db74>&#34;Calculate SDF&#34;</span>, GUILayout.Height(<span style=color:#ae81ff>30</span>)))
-            {
-                jumpFlooding.Calculate();
-            }
-        }
-    }
-}
-</code></pre></div><h3 id=jfavisualizeshader>JFAVisualize.shader<a hidden class=anchor aria-hidden=true href=#jfavisualizeshader>#</a></h3><p>这个shader应该用在宽高比2:1的Mesh上，这样左半部分是记录了最近像素的uv的贴图，有伴部分是记录了带方向的距离的灰度贴图或者其描边的可视化。需要注意采样的方式和使用像素点中心来计算距离。</p><pre><code class=language-HLSL data-lang=HLSL>Shader &quot;Unlit/JFAVisualize&quot;
-{
-    Properties
-    {
-        _MainTex (&quot;Texture&quot;, 2D) = &quot;white&quot; {}
-        _Distance (&quot;Distance&quot;, float) = 10
-    }
-
-    HLSLINCLUDE
-#include &quot;Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl&quot;
-#include &quot;Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl&quot;
-#pragma multi_compile _ RENDERTEXTURE_UPSIDE_DOWN
-
-    Texture2D _MainTex;
-    float4 _MainTex_TexelSize;
-    SamplerState sampler_PointClamp;
-    float _Distance;
-
-    struct Attributes
-    {
-        float4 positionOS   : POSITION;
-        float2 texcoord     : TEXCOORD0;
-    };
-
-    struct Varyings
-    {
-        float4 positionCS   : SV_POSITION;
-        float2 uv           : TEXCOORD0;
-    };
-
-    Varyings Vert(Attributes input)
-    {
-        Varyings output = (Varyings)0;
-        VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
-        output.positionCS = vertexInput.positionCS;
-        output.uv = input.texcoord;
-        return output;
-    }
-
-    float4 Frag(Varyings input) : SV_TARGET
-    {
-        float2 upsideDown = input.uv;
-#if RENDERTEXTURE_UPSIDE_DOWN
-        upsideDown = float2(input.uv.x, 1 - input.uv.y);
-#endif
-        float2 uvOne = float2(upsideDown.x * 2, upsideDown.y);
-        float2 uvTwo = float2(upsideDown.x * 2 - 1, upsideDown.y);
-        float4 returnColor = 0;
-
-        if (input.uv.x &gt;= 0.5)
-        {
-            float4 texColor = _MainTex.SampleLevel(sampler_PointClamp, uvTwo, 0);
-#if RENDERTEXTURE_UPSIDE_DOWN
-            float2 realTexcoord = float2(input.uv.x * 2 - 1, input.uv.y);
-            realTexcoord = floor(realTexcoord* _MainTex_TexelSize.zw) + 0.5;
-            float distance = length(texColor.xy * _MainTex_TexelSize.zw - realTexcoord);
-#else
-            float2 realTexcoord = uvTwo;
-            realTexcoord = floor(realTexcoord * _MainTex_TexelSize.zw) + 0.5;
-            float distance = length(texColor.xy * _MainTex_TexelSize.zw - realTexcoord);
-#endif
-            float grayScale = smoothstep(_Distance, 0, distance);
-            returnColor = float4(grayScale, grayScale, grayScale, 1);
-        }
-        else
-        {
-            returnColor = _MainTex.SampleLevel(sampler_PointClamp, uvOne, 0);
-        }
-        return returnColor;
-    }
-
-    ENDHLSL
-
-    SubShader
-    {
-        Tags { &quot;RenderType&quot;=&quot;Opaque&quot; }
-        LOD 100
-
-        Pass
-        {
-            Name &quot;JFA Visualize Pass&quot;
-            Tags{&quot;LightMode&quot; = &quot;UniversalForward&quot;}
-            Cull Back
-            ZTest LEqual
-            ZWrite On
-            HLSLPROGRAM
-            #pragma vertex Vert
-            #pragma fragment Frag
-            ENDHLSL
-        }
-    }
-}
-</code></pre></div><footer class=post-footer><ul class=post-tags><li><a href=https://zznewclear13.github.io/tags/compute-shader/>Compute Shader</a></li><li><a href=https://zznewclear13.github.io/tags/signed-distance-field/>Signed Distance Field</a></li><li><a href=https://zznewclear13.github.io/tags/jump-flooding-algorithm/>Jump Flooding Algorithm</a></li></ul><nav class=paginav><a class=prev href=https://zznewclear13.github.io/posts/unity-space-transformation-overview/><span class=title>« Prev</span><br><span>Unity空间变换总览</span></a>
-<a class=next href=https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/><span class=title>Next »</span><br><span>使用Compute Shader计算球谐全局光照</span></a></nav></footer><div id=comments></div><script>let currentHugoTheme=window.localStorage.getItem("pref-theme");function loadComment(){const b=document.getElementById('comments');let c=currentHugoTheme=='dark'?'photon-dark':'github-light',a=document.createElement('script');a.src='https://utteranc.es/client.js',a.setAttribute('repo','zznewclear13/zznewclear13.github.io'),a.setAttribute('issue-term','pathname'),a.setAttribute('label','utterances'),a.setAttribute('theme',c),a.setAttribute('crossorigin','anonymous'),a.setAttribute('async',''),b.innerHTML='',b.appendChild(a)}loadComment(),document.getElementById('theme-toggle').onclick=async()=>{await new Promise(a=>setTimeout(a,200));let a=window.localStorage.getItem('pref-theme');a!=currentHugoTheme&&(currentHugoTheme=a,loadComment())}</script></article></main><footer class=footer><span>&copy; 2024 <a href=https://zznewclear13.github.io/>ZZNEWCLEAR13</a></span>
+<img loading=lazy src=../images/JumpFlooding.jpg#center alt="Jump Flooding"></p><h2 id=使用jfa计算一张2d图片对应的sdf贴图>使用JFA计算一张2D图片对应的SDF贴图<a hidden class=anchor aria-hidden=true href=#使用jfa计算一张2d图片对应的sdf贴图>#</a></h2><p>首先在Unity中创建<code>JumpFlooding.cs</code>, <code>JFAComputeShader.compute</code>, 和<code>JFAVisualize.shader</code>，分别用来执行Compute Shader，使用JFA算法计算SDF和可视化JFA算法的结果。</p><p>这里使用一张RGB通道为灰色，Alpha通道写着“JFA”的贴图作为我们2D图片的输入。<figure><img loading=lazy src=../images/JFAImage.png#center width=200px></figure></p><h3 id=整体思路和需要注意的事项>整体思路和需要注意的事项<a hidden class=anchor aria-hidden=true href=#整体思路和需要注意的事项>#</a></h3><ol><li>先从简单实现功能上来考虑，暂时忽略掉抗锯齿的需求，直接对Alpha通道的值按照0.5来划分出图形的内部和外部，大于等于0.5为外部，小于0.5为内部。</li><li>SDF需要要计算距离，这里使用像素点中心到另一个像素点中心的距离（也可以使用像素点左下角到另一个像素点左下角的距离，不过为了明确起见，还是加上这半个像素的偏移比较好）。距离可以用uv的大小来表示，也可以用像素数量来表示，针对图像长宽不同的情况，这里以一个像素宽度为1来表示两个像素点的距离。在最后采样JFA的Render Texture的时候，也要注意使用sampler_PointClamp来进行采样，计算距离时也不能仅仅使用uv来计算，而是要使用像素中间的点的位置来进行计算。</li><li>普通的JFA算法会使用到Render Texture的两个通道，来标记像素对应的最近边界像素的UV，由于记录的是UV的数值而不是颜色信息，Render Texture要储存在线性空间中。由于要同时计算内部和外部的点到边界的有向距离，JFA算法会使用到Render Texture全部的四个通道，这里使用前两位记录位于内部的像素对应的边界像素的坐标，用后两位记录位于外部的像素对应的边界像素的坐标，即对于内部的像素(nearestUV.x, nearestUV.y, Z, W)，对于外部的像素(X, Y, nearestUV.x, nearestUV.y)，XYZW则可以用来表示该点为最初始的内外部的点、包含JFA传递的信息的点。不包含JFA传递的信息的点。</li><li>在JFA计算之前，需要先让贴图对应的点包含JFA信息，也就是说，对于内部的点初始化为(UV.x, UV.y, -1, -1)，对于外部的点初始化为(-1, -1, UV.x, UV.y)。这要求我们使用的Render Texture格式为至少R16G16B16A16 SFloat。</li><li>在JFA的计算中，以外部的像素点为例，所进行的操作是：采样上次经过JFA操作的Render Texture；根据XY通道判断该点在边界的内部还是外部，内部就跳过；对外部的像素点，通过XY通道判断是否已包含JFA的信息，如果包含，根据ZW通道计算出当前点到其包含的最近像素的距离，如果不包含，将这个距离设置为一个极大的常数；分别采样距离像素点2的幂次的距离的八个像素，判断这些像素是否已包含JFA的信息，如果不包含，采样下一个点，如果包含，根据这些像素的ZW通道计算出当前点到这些像素包含的最近像素的距离，并和上一步算出的距离进行比较，如果小于上一步算出的距离，则证明该像素对应的最近像素为周围点包含的像素，更新该像素的ZW通道，并且将XY通道标记成已包含JFA的信息。</li><li>采样周边像素的步长从2D贴图的长宽的一半向上取整开始，每次JFA都取上一步步长的一半向上取整作为新的步长，一直进行到步长为(1, 1)，进行最后一次JFA计算。</li><li>经过JFA计算之后，还需要将分别表示内部的点对应的最近像素的UV和外部的点对应的最近像素的UV结合起来，储存为一张贴图，可以是(nearestUV.x, nearestUV.y, 0, inside?1:0)，也可以是(distance * inside?-1:1, 1)。</li><li>应该是跟当前平台有关，有时候会出现贴图上下颠倒的情况，可以用UNITY_UV_STARTS_AT_TOP来协助解决，不过compute shader可能需要自己启用这个宏，这里就直接硬写在shader里，不做平台判断了。</li></ol><h3 id=jfacomputeshadercompute>JFAComputeShader.compute<a hidden class=anchor aria-hidden=true href=#jfacomputeshadercompute>#</a></h3><p>根据上面的整体思路，我们需要三个kernel，一个用来初始化，一个做JFA计算，最后一个用来合成最后的贴图。Compute Shader的关键字需要Unity 2020以上（我也不知道具体哪个版本）才能有，这里就暂时用<code>UNITY_2020_2_OR_NEWER</code>这个宏来屏蔽了。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-HLSL data-lang=HLSL><span style=display:flex><span><span style=color:#75715e>#pragma kernel CopyUVMain</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#define PIXEL_OFFSET 0.5</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>Texture2D</span><span style=color:#f92672>&lt;</span><span style=color:#66d9ef>float4</span><span style=color:#f92672>&gt;</span> _InputTexture;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>RWTexture2D</span><span style=color:#f92672>&lt;</span><span style=color:#66d9ef>float4</span><span style=color:#f92672>&gt;</span> _OutputTexture;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float4</span> _TextureSize;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float</span> _Channel;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>[<span style=color:#a6e22e>numthreads</span>(<span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>1</span>)]
+</span></span><span style=display:flex><span><span style=color:#66d9ef>void</span> CopyUVMain(<span style=color:#66d9ef>uint3</span> id <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_DispatchThreadID</span>)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float2</span> samplePosition <span style=color:#f92672>=</span> id.xy <span style=color:#f92672>+</span> PIXEL_OFFSET;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (any(samplePosition <span style=color:#f92672>&gt;=</span> _TextureSize.xy))
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>return</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float4</span> inputTexture <span style=color:#f92672>=</span> _InputTexture.Load(<span style=color:#66d9ef>float3</span>(id.xy, <span style=color:#ae81ff>0</span>));
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float</span> determin <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>switch</span> ((<span style=color:#66d9ef>uint</span>)_Channel)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>case</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>			determin <span style=color:#f92672>=</span> inputTexture.r;
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>case</span> <span style=color:#ae81ff>1</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>			determin <span style=color:#f92672>=</span> inputTexture.g;
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>case</span> <span style=color:#ae81ff>2</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>			determin <span style=color:#f92672>=</span> inputTexture.b;
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>case</span> <span style=color:#ae81ff>3</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>			determin <span style=color:#f92672>=</span> inputTexture.a;
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>default</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (determin <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>0.5</span>)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		_OutputTexture[id.xy] <span style=color:#f92672>=</span> <span style=color:#66d9ef>float4</span>(<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>, samplePosition.x <span style=color:#f92672>*</span> _TextureSize.z, samplePosition.y <span style=color:#f92672>*</span> _TextureSize.w);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span>
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		_OutputTexture[id.xy] <span style=color:#f92672>=</span> <span style=color:#66d9ef>float4</span>(samplePosition.x <span style=color:#f92672>*</span> _TextureSize.z, samplePosition.y <span style=color:#f92672>*</span> _TextureSize.w, <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>	}   
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-HLSL data-lang=HLSL><span style=display:flex><span><span style=color:#75715e>#pragma kernel JFAMain</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float2</span> _Step;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>static</span> <span style=color:#66d9ef>int2</span> directions[] <span style=color:#f92672>=</span>
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>int2</span>(<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>int2</span>(<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>0</span>),
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>int2</span>(<span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>int2</span>(<span style=color:#ae81ff>0</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>int2</span>(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>int2</span>(<span style=color:#ae81ff>1</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>),
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>int2</span>(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>0</span>),
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>int2</span>(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>};
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float4</span> JFAOutside(<span style=color:#66d9ef>float4</span> inputTex, <span style=color:#66d9ef>float2</span> idxy)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float4</span> outputTex <span style=color:#f92672>=</span> inputTex;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>//cull inside</span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (inputTex.x <span style=color:#f92672>!=</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float2</span> nearestUV <span style=color:#f92672>=</span> inputTex.zw;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float</span> minDistance <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>e16;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>//if had min distance in previous flooding</span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> (inputTex.z <span style=color:#f92672>!=</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>		{
+</span></span><span style=display:flex><span>			minDistance <span style=color:#f92672>=</span> length(idxy <span style=color:#f92672>+</span> PIXEL_OFFSET <span style=color:#f92672>-</span> nearestUV <span style=color:#f92672>*</span> _TextureSize.xy);
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>bool</span> hasMin <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>uint</span> i <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; i <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>8</span>; i<span style=color:#f92672>++</span>)
+</span></span><span style=display:flex><span>		{
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>uint2</span> sampleOffset <span style=color:#f92672>=</span> idxy <span style=color:#f92672>+</span> directions[i] <span style=color:#f92672>*</span> _Step;
+</span></span><span style=display:flex><span>			sampleOffset <span style=color:#f92672>=</span> clamp(sampleOffset, <span style=color:#ae81ff>0</span>, _TextureSize.xy <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>float4</span> offsetTexture <span style=color:#f92672>=</span> _InputTexture.Load(<span style=color:#66d9ef>float3</span>(sampleOffset, <span style=color:#ae81ff>0</span>));
+</span></span><span style=display:flex><span>			<span style=color:#75715e>//if had min distance in previous flooding</span>
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>if</span> (offsetTexture.z <span style=color:#f92672>!=</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>			{
+</span></span><span style=display:flex><span>				<span style=color:#66d9ef>float2</span> tempUV <span style=color:#f92672>=</span> offsetTexture.zw;
+</span></span><span style=display:flex><span>				<span style=color:#66d9ef>float</span> tempDistance <span style=color:#f92672>=</span> length(idxy <span style=color:#f92672>+</span> PIXEL_OFFSET <span style=color:#f92672>-</span> tempUV <span style=color:#f92672>*</span> _TextureSize.xy);
+</span></span><span style=display:flex><span>				<span style=color:#66d9ef>if</span> (tempDistance <span style=color:#f92672>&lt;</span> minDistance)
+</span></span><span style=display:flex><span>				{
+</span></span><span style=display:flex><span>					hasMin <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>					minDistance <span style=color:#f92672>=</span> tempDistance;
+</span></span><span style=display:flex><span>					nearestUV <span style=color:#f92672>=</span> tempUV;
+</span></span><span style=display:flex><span>				}
+</span></span><span style=display:flex><span>			}
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> (hasMin)
+</span></span><span style=display:flex><span>		{
+</span></span><span style=display:flex><span>			outputTex <span style=color:#f92672>=</span> <span style=color:#66d9ef>float4</span>(inputTex.xy, nearestUV);
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> outputTex;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float4</span> JFAInside(<span style=color:#66d9ef>float4</span> inputTex, <span style=color:#66d9ef>float2</span> idxy)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float4</span> outputTex <span style=color:#f92672>=</span> inputTex;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#75715e>//cull outside</span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (inputTex.z <span style=color:#f92672>!=</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float2</span> nearestUV <span style=color:#f92672>=</span> inputTex.xy;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float</span> minDistance <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>e16;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#75715e>//if had min distance in previous flooding</span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> (inputTex.x <span style=color:#f92672>!=</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>		{
+</span></span><span style=display:flex><span>			minDistance <span style=color:#f92672>=</span> length(idxy <span style=color:#f92672>+</span> PIXEL_OFFSET <span style=color:#f92672>-</span> nearestUV <span style=color:#f92672>*</span> _TextureSize.xy);
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>bool</span> hasMin <span style=color:#f92672>=</span> <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>uint</span> i <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>; i <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>8</span>; i<span style=color:#f92672>++</span>)
+</span></span><span style=display:flex><span>		{
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>uint2</span> sampleOffset <span style=color:#f92672>=</span> idxy <span style=color:#f92672>+</span> directions[i] <span style=color:#f92672>*</span> _Step;
+</span></span><span style=display:flex><span>			sampleOffset <span style=color:#f92672>=</span> clamp(sampleOffset, <span style=color:#ae81ff>0</span>, _TextureSize.xy <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>float4</span> offsetTexture <span style=color:#f92672>=</span> _InputTexture.Load(<span style=color:#66d9ef>float3</span>(sampleOffset, <span style=color:#ae81ff>0</span>));
+</span></span><span style=display:flex><span>			<span style=color:#75715e>//if had min distance in previous flooding</span>
+</span></span><span style=display:flex><span>			<span style=color:#66d9ef>if</span> (offsetTexture.x <span style=color:#f92672>!=</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>			{
+</span></span><span style=display:flex><span>				<span style=color:#66d9ef>float2</span> tempUV <span style=color:#f92672>=</span> offsetTexture.xy;
+</span></span><span style=display:flex><span>				<span style=color:#66d9ef>float</span> tempDistance <span style=color:#f92672>=</span> length(idxy <span style=color:#f92672>+</span> PIXEL_OFFSET <span style=color:#f92672>-</span> tempUV <span style=color:#f92672>*</span> _TextureSize.xy);
+</span></span><span style=display:flex><span>				<span style=color:#66d9ef>if</span> (tempDistance <span style=color:#f92672>&lt;</span> minDistance)
+</span></span><span style=display:flex><span>				{
+</span></span><span style=display:flex><span>					hasMin <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>					minDistance <span style=color:#f92672>=</span> tempDistance;
+</span></span><span style=display:flex><span>					nearestUV <span style=color:#f92672>=</span> tempUV;
+</span></span><span style=display:flex><span>				}
+</span></span><span style=display:flex><span>			}
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>if</span> (hasMin)
+</span></span><span style=display:flex><span>		{
+</span></span><span style=display:flex><span>			outputTex <span style=color:#f92672>=</span> <span style=color:#66d9ef>float4</span>(nearestUV, inputTex.zw);
+</span></span><span style=display:flex><span>		}
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> outputTex;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>[<span style=color:#a6e22e>numthreads</span>(<span style=color:#ae81ff>8</span>,<span style=color:#ae81ff>8</span>,<span style=color:#ae81ff>1</span>)]
+</span></span><span style=display:flex><span><span style=color:#66d9ef>void</span> JFAMain(<span style=color:#66d9ef>uint3</span> id <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_DispatchThreadID</span>)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float2</span> samplePosition <span style=color:#f92672>=</span> id.xy <span style=color:#f92672>+</span> PIXEL_OFFSET;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (any(samplePosition <span style=color:#f92672>&gt;=</span> _TextureSize.xy))
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>return</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float4</span> inputTexture <span style=color:#f92672>=</span> _InputTexture.Load(<span style=color:#66d9ef>float3</span>(id.xy, <span style=color:#ae81ff>0</span>));
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float4</span> outSide <span style=color:#f92672>=</span> JFAOutside(inputTexture, id.xy);
+</span></span><span style=display:flex><span>	_OutputTexture[id.xy] <span style=color:#f92672>=</span> JFAInside(outSide, id.xy);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-HLSL data-lang=HLSL><span style=display:flex><span><span style=color:#75715e>#pragma kernel ComposeMain</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>Texture2D</span><span style=color:#f92672>&lt;</span><span style=color:#66d9ef>float4</span><span style=color:#f92672>&gt;</span> _OriginalTexture;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#if UNITY_2020_2_OR_NEWER</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#pragma multi_compile _USE_GRAYSCALE</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#else</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#define _USE_GRAYSCALE 0</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#endif</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>[<span style=color:#a6e22e>numthreads</span>(<span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>1</span>)]
+</span></span><span style=display:flex><span><span style=color:#66d9ef>void</span> ComposeMain(<span style=color:#66d9ef>uint3</span> id <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_DispatchThreadID</span>)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>uint2</span> reverseY <span style=color:#f92672>=</span> id.xy;
+</span></span><span style=display:flex><span>	reverseY <span style=color:#f92672>=</span> <span style=color:#66d9ef>uint2</span>(id.x, _TextureSize.y <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> id.y);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float4</span> inputTexture <span style=color:#f92672>=</span> _InputTexture.Load(<span style=color:#66d9ef>float3</span>(reverseY, <span style=color:#ae81ff>0</span>));
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float4</span> originalTexture <span style=color:#f92672>=</span> _OriginalTexture.Load(<span style=color:#66d9ef>float3</span>(reverseY, <span style=color:#ae81ff>0</span>));
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float</span> determin <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>switch</span> ((<span style=color:#66d9ef>uint</span>)_Channel)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>case</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>		determin <span style=color:#f92672>=</span> originalTexture.r;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>case</span> <span style=color:#ae81ff>1</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>		determin <span style=color:#f92672>=</span> originalTexture.g;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>case</span> <span style=color:#ae81ff>2</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>		determin <span style=color:#f92672>=</span> originalTexture.b;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>case</span> <span style=color:#ae81ff>3</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>		determin <span style=color:#f92672>=</span> originalTexture.a;
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>default</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#if _USE_GRAYSCALE</span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>float</span> distance <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (determin <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>0.5</span>)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		distance <span style=color:#f92672>=</span> <span style=color:#f92672>-</span>length(reverseY <span style=color:#f92672>+</span> PIXEL_OFFSET <span style=color:#f92672>-</span> inputTexture.xy <span style=color:#f92672>*</span> _TextureSize.xy);
+</span></span><span style=display:flex><span>		_OutputTexture[id.xy] <span style=color:#f92672>=</span> <span style=color:#66d9ef>float4</span>(distance, distance, distance, <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span>
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		distance <span style=color:#f92672>=</span> length(reverseY <span style=color:#f92672>+</span> PIXEL_OFFSET <span style=color:#f92672>-</span> inputTexture.zw <span style=color:#f92672>*</span> _TextureSize.xy);
+</span></span><span style=display:flex><span>		_OutputTexture[id.xy] <span style=color:#f92672>=</span> <span style=color:#66d9ef>float4</span>(distance, distance, distance, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span><span style=color:#75715e>#else</span>
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (determin <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>0.5</span>)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		_OutputTexture[id.xy] <span style=color:#f92672>=</span> <span style=color:#66d9ef>float4</span>(inputTexture.xy, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>else</span>
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		_OutputTexture[id.xy] <span style=color:#f92672>=</span> <span style=color:#66d9ef>float4</span>(inputTexture.zw, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span><span style=color:#75715e>#endif</span>
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=jumpfloodingcs>JumpFlooding.cs<a hidden class=anchor aria-hidden=true href=#jumpfloodingcs>#</a></h3><p>C#脚本没什么特殊的地方了，只要准备好Render Texture和各类参数，传递给Compute Shader就好了。为了方便可视化，这里使用了MonoBehaviour的Coroutine，需要点击play之后在点击脚本里的"Calculate SDF"。这里保存的是记录了对应的像素点的UV的贴图，这样可以用jpg或者png来保存，如果要保存记录了有向距离的灰度贴图，就需要保存为float类型的exr格式了。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C# data-lang=C#><span style=display:flex><span><span style=color:#66d9ef>using</span> System.Collections;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>using</span> UnityEngine;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>using</span> UnityEditor;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>JumpFlooding</span> : MonoBehaviour
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>enum</span> Channels
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        R, G, B, A
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> Texture inputTexture;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> ComputeShader computeShader;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>float</span> updateTime;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> MeshRenderer meshRenderer;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>bool</span> useGrayScale = <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> RenderTexture[] renderTextures;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> EnsureArray&lt;T&gt;(<span style=color:#66d9ef>ref</span> T[] array, <span style=color:#66d9ef>int</span> size, T initialValue = <span style=color:#66d9ef>default</span>(T))
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (array == <span style=color:#66d9ef>null</span> || array.Length != size)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            array = <span style=color:#66d9ef>new</span> T[size];
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i = <span style=color:#ae81ff>0</span>; i != size; i++)
+</span></span><span style=display:flex><span>                array[i] = initialValue;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> EnsureRenderTexture(<span style=color:#66d9ef>ref</span> RenderTexture rt, RenderTextureDescriptor descriptor, <span style=color:#66d9ef>string</span> RTName)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (rt != <span style=color:#66d9ef>null</span> &amp;&amp; (rt.width != descriptor.width || rt.height != descriptor.height))
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            RenderTexture.ReleaseTemporary(rt);
+</span></span><span style=display:flex><span>            rt = <span style=color:#66d9ef>null</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (rt == <span style=color:#66d9ef>null</span>)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            RenderTextureDescriptor desc = descriptor;
+</span></span><span style=display:flex><span>            desc.depthBufferBits = <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>            desc.msaaSamples = <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            rt = RenderTexture.GetTemporary(desc);
+</span></span><span style=display:flex><span>            rt.name = RTName;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (!rt.IsCreated()) rt.Create();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>void</span> EnsureRT(<span style=color:#66d9ef>ref</span> RenderTexture[] rts, RenderTextureDescriptor descriptor)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        EnsureArray(<span style=color:#66d9ef>ref</span> rts, <span style=color:#ae81ff>2</span>);
+</span></span><span style=display:flex><span>        EnsureRenderTexture(<span style=color:#66d9ef>ref</span> rts[<span style=color:#ae81ff>0</span>], descriptor, <span style=color:#e6db74>&#34;Froxel Tex One&#34;</span>);
+</span></span><span style=display:flex><span>        EnsureRenderTexture(<span style=color:#66d9ef>ref</span> rts[<span style=color:#ae81ff>1</span>], descriptor, <span style=color:#e6db74>&#34;Froxel Tex Two&#34;</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> Calculate()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        StartCoroutine(CalculateCoroutine());
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> CopyUV(Texture texture, RenderTexture renderTexture, <span style=color:#66d9ef>uint</span> channel)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> kernel = computeShader.FindKernel(<span style=color:#e6db74>&#34;CopyUVMain&#34;</span>);
+</span></span><span style=display:flex><span>        computeShader.GetKernelThreadGroupSizes(kernel, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> x, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> y, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> z);
+</span></span><span style=display:flex><span>        Vector3Int dispatchCounts = <span style=color:#66d9ef>new</span> Vector3Int(Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.width / x),
+</span></span><span style=display:flex><span>                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.height / y),
+</span></span><span style=display:flex><span>                                                    <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>        computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, texture);
+</span></span><span style=display:flex><span>        computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, renderTexture);
+</span></span><span style=display:flex><span>        computeShader.SetVector(<span style=color:#e6db74>&#34;_TextureSize&#34;</span>, <span style=color:#66d9ef>new</span> Vector4(texture.width, texture.height, <span style=color:#ae81ff>1.0f</span> / texture.width, <span style=color:#ae81ff>1.0f</span> / texture.height));
+</span></span><span style=display:flex><span>        computeShader.SetFloat(<span style=color:#e6db74>&#34;_Channel&#34;</span>, (<span style=color:#66d9ef>float</span>)channel);
+</span></span><span style=display:flex><span>        computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> JFA(RenderTexture one, RenderTexture two, Vector2Int step, <span style=color:#66d9ef>bool</span> reverse)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> kernel = computeShader.FindKernel(<span style=color:#e6db74>&#34;JFAMain&#34;</span>);
+</span></span><span style=display:flex><span>        computeShader.GetKernelThreadGroupSizes(kernel, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> x, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> y, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> z);
+</span></span><span style=display:flex><span>        Vector3Int dispatchCounts = <span style=color:#66d9ef>new</span> Vector3Int(Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.width / x),
+</span></span><span style=display:flex><span>                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.height / y),
+</span></span><span style=display:flex><span>                                                    <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (reverse)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, two);
+</span></span><span style=display:flex><span>            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, one);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>else</span>
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, one);
+</span></span><span style=display:flex><span>            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, two);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        computeShader.SetVector(<span style=color:#e6db74>&#34;_TextureSize&#34;</span>, <span style=color:#66d9ef>new</span> Vector4(inputTexture.width, inputTexture.height, <span style=color:#ae81ff>1.0f</span> / inputTexture.width, <span style=color:#ae81ff>1.0f</span> / inputTexture.height));
+</span></span><span style=display:flex><span>        computeShader.SetVector(<span style=color:#e6db74>&#34;_Step&#34;</span>, (Vector2)step);
+</span></span><span style=display:flex><span>        computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> Compose(RenderTexture one, RenderTexture two, Texture texture, <span style=color:#66d9ef>uint</span> channel, <span style=color:#66d9ef>bool</span> reverse)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> kernel = computeShader.FindKernel(<span style=color:#e6db74>&#34;ComposeMain&#34;</span>);
+</span></span><span style=display:flex><span>        computeShader.GetKernelThreadGroupSizes(kernel, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> x, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> y, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> z);
+</span></span><span style=display:flex><span>        Vector3Int dispatchCounts = <span style=color:#66d9ef>new</span> Vector3Int(Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.width / x),
+</span></span><span style=display:flex><span>                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)inputTexture.height / y),
+</span></span><span style=display:flex><span>                                                    <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (reverse)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, two);
+</span></span><span style=display:flex><span>            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, one);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>else</span>
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_InputTexture&#34;</span>, one);
+</span></span><span style=display:flex><span>            computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OutputTexture&#34;</span>, two);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        computeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_OriginalTexture&#34;</span>, texture);
+</span></span><span style=display:flex><span>        computeShader.SetFloat(<span style=color:#e6db74>&#34;_Channel&#34;</span>, (<span style=color:#66d9ef>float</span>)channel);
+</span></span><span style=display:flex><span><span style=color:#75715e>#if</span> UNITY_2020_2_OR_NEWER
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span>(useGrayScale)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            computeShader.EnableKeyword(<span style=color:#e6db74>&#34;_USE_GRAYSCALE&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>else</span>
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            computeShader.DisableKeyword(<span style=color:#e6db74>&#34;_USE_GRAYSCALE&#34;</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span><span style=color:#75715e>#endif</span>
+</span></span><span style=display:flex><span>        computeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> Visualize(RenderTexture one, RenderTexture two, <span style=color:#66d9ef>bool</span> reverse)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        MaterialPropertyBlock mpb = <span style=color:#66d9ef>new</span> MaterialPropertyBlock();
+</span></span><span style=display:flex><span>        mpb.SetTexture(<span style=color:#e6db74>&#34;_MainTex&#34;</span>, reverse ? two : one);
+</span></span><span style=display:flex><span>        meshRenderer.SetPropertyBlock(mpb);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> SaveToTexture(<span style=color:#66d9ef>string</span> name, RenderTexture renderTexture, <span style=color:#66d9ef>bool</span> alphaIsTransparency)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        RenderTexture currentRT = RenderTexture.active;
+</span></span><span style=display:flex><span>        RenderTexture.active = renderTexture;
+</span></span><span style=display:flex><span>        Texture2D texture2D = <span style=color:#66d9ef>new</span> Texture2D(renderTexture.width, renderTexture.height, TextureFormat.RGBAFloat, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>        texture2D.ReadPixels(<span style=color:#66d9ef>new</span> Rect(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, renderTexture.width, renderTexture.height), <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>        RenderTexture.active = currentRT;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        System.IO.Directory.CreateDirectory(<span style=color:#e6db74>&#34;Assets/JumpFlooding/&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>byte</span>[] bytes = texture2D.EncodeToEXR();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>string</span> path = <span style=color:#e6db74>&#34;Assets/JumpFlooding/&#34;</span> + name + <span style=color:#e6db74>&#34;.exr&#34;</span>;
+</span></span><span style=display:flex><span>        System.IO.File.WriteAllBytes(path, bytes);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        TextureImporter importer = (TextureImporter)AssetImporter.GetAtPath(path);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (importer != <span style=color:#66d9ef>null</span>)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            importer.alphaIsTransparency = alphaIsTransparency;
+</span></span><span style=display:flex><span>            importer.sRGBTexture = <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>            importer.mipmapEnabled = <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>            AssetDatabase.ImportAsset(path);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#e6db74>&#34;Saved to &#34;</span> + path);
+</span></span><span style=display:flex><span>        AssetDatabase.Refresh();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    IEnumerator CalculateCoroutine()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        RenderTextureDescriptor desc = <span style=color:#66d9ef>new</span> RenderTextureDescriptor
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            width = inputTexture.width,
+</span></span><span style=display:flex><span>            height = inputTexture.height,
+</span></span><span style=display:flex><span>            volumeDepth = <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>            msaaSamples = <span style=color:#ae81ff>1</span>,
+</span></span><span style=display:flex><span>            graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16B16A16_SFloat,
+</span></span><span style=display:flex><span>            enableRandomWrite = <span style=color:#66d9ef>true</span>,
+</span></span><span style=display:flex><span>            dimension = UnityEngine.Rendering.TextureDimension.Tex2D,
+</span></span><span style=display:flex><span>            sRGB = <span style=color:#66d9ef>false</span>
+</span></span><span style=display:flex><span>        };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        EnsureRT(<span style=color:#66d9ef>ref</span> renderTextures, desc);
+</span></span><span style=display:flex><span>        RenderTexture rtOne = renderTextures[<span style=color:#ae81ff>0</span>];
+</span></span><span style=display:flex><span>        RenderTexture rtTwo = renderTextures[<span style=color:#ae81ff>1</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        CopyUV(inputTexture, rtOne, (<span style=color:#66d9ef>uint</span>)Channels.A);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>yield</span> <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> WaitForSeconds(updateTime);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Shader.DisableKeyword(<span style=color:#e6db74>&#34;RENDERTEXTURE_UPSIDE_DOWN&#34;</span>);
+</span></span><span style=display:flex><span>        Vector2Int step = <span style=color:#66d9ef>new</span> Vector2Int((inputTexture.width + <span style=color:#ae81ff>1</span>) &gt;&gt; <span style=color:#ae81ff>1</span>, (inputTexture.height + <span style=color:#ae81ff>1</span>) &gt;&gt; <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>bool</span> reverse = <span style=color:#66d9ef>false</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>do</span>
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            Debug.Log(step);
+</span></span><span style=display:flex><span>            JFA(rtOne, rtTwo, step, reverse);
+</span></span><span style=display:flex><span>            reverse = !reverse;
+</span></span><span style=display:flex><span>            Visualize(rtOne, rtTwo, reverse);
+</span></span><span style=display:flex><span>            step = <span style=color:#66d9ef>new</span> Vector2Int((step.x + <span style=color:#ae81ff>1</span>) &gt;&gt; <span style=color:#ae81ff>1</span>, (step.y + <span style=color:#ae81ff>1</span>) &gt;&gt; <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>yield</span> <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> WaitForSeconds(updateTime);
+</span></span><span style=display:flex><span>        } <span style=color:#66d9ef>while</span> (step.x &gt; <span style=color:#ae81ff>1</span> || step.y &gt; <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#66d9ef>new</span> Vector2Int(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>));
+</span></span><span style=display:flex><span>        JFA(rtOne, rtTwo, <span style=color:#66d9ef>new</span> Vector2Int(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>), reverse);
+</span></span><span style=display:flex><span>        reverse = !reverse;
+</span></span><span style=display:flex><span>        Visualize(rtOne, rtTwo, reverse);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>yield</span> <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> WaitForSeconds(updateTime);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#66d9ef>new</span> Vector2Int(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>));
+</span></span><span style=display:flex><span>        JFA(rtOne, rtTwo, <span style=color:#66d9ef>new</span> Vector2Int(<span style=color:#ae81ff>1</span>, <span style=color:#ae81ff>1</span>), reverse);
+</span></span><span style=display:flex><span>        reverse = !reverse;
+</span></span><span style=display:flex><span>        Visualize(rtOne, rtTwo, reverse);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>yield</span> <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> WaitForSeconds(updateTime);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Compose(rtOne, rtTwo, inputTexture, (<span style=color:#66d9ef>uint</span>)Channels.A, reverse);
+</span></span><span style=display:flex><span>        reverse = !reverse;
+</span></span><span style=display:flex><span>        Shader.EnableKeyword(<span style=color:#e6db74>&#34;RENDERTEXTURE_UPSIDE_DOWN&#34;</span>);
+</span></span><span style=display:flex><span>        Visualize(rtOne, rtTwo, reverse);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        SaveToTexture(<span style=color:#e6db74>&#34;WhatIsThis&#34;</span>, reverse ? rtTwo : rtOne, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span><span style=color:#a6e22e>
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>[CustomEditor(typeof(JumpFlooding))]</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>JumpFloodingEditor</span> : Editor
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> JumpFlooding jumpFlooding;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> OnEnable()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        jumpFlooding = (JumpFlooding)target;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>override</span> <span style=color:#66d9ef>void</span> OnInspectorGUI()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>base</span>.OnInspectorGUI();
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>using</span> (<span style=color:#66d9ef>new</span> EditorGUI.DisabledGroupScope(!Application.isPlaying))
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (GUILayout.Button(<span style=color:#e6db74>&#34;Calculate SDF&#34;</span>, GUILayout.Height(<span style=color:#ae81ff>30</span>)))
+</span></span><span style=display:flex><span>            {
+</span></span><span style=display:flex><span>                jumpFlooding.Calculate();
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=jfavisualizeshader>JFAVisualize.shader<a hidden class=anchor aria-hidden=true href=#jfavisualizeshader>#</a></h3><p>这个shader应该用在宽高比2:1的Mesh上，这样左半部分是记录了最近像素的uv的贴图，有伴部分是记录了带方向的距离的灰度贴图或者其描边的可视化。需要注意采样的方式和使用像素点中心来计算距离。</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-HLSL data-lang=HLSL><span style=display:flex><span>Shader <span style=color:#e6db74>&#34;Unlit/JFAVisualize&#34;</span>
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    Properties
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        _MainTex (<span style=color:#e6db74>&#34;Texture&#34;</span>, <span style=color:#ae81ff>2</span>D) <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;white&#34;</span> {}
+</span></span><span style=display:flex><span>        _Distance (<span style=color:#e6db74>&#34;Distance&#34;</span>, <span style=color:#66d9ef>float</span>) <span style=color:#f92672>=</span> <span style=color:#ae81ff>10</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    HLSLINCLUDE
+</span></span><span style=display:flex><span><span style=color:#75715e>#include &#34;Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl&#34;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#include &#34;Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl&#34;</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#pragma multi_compile _ RENDERTEXTURE_UPSIDE_DOWN</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>Texture2D</span> _MainTex;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float4</span> _MainTex_TexelSize;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>SamplerState</span> sampler_PointClamp;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> _Distance;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> Attributes
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float4</span> positionOS   <span style=color:#f92672>:</span> POSITION;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float2</span> texcoord     <span style=color:#f92672>:</span> TEXCOORD0;
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> Varyings
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float4</span> positionCS   <span style=color:#f92672>:</span> SV_POSITION;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float2</span> uv           <span style=color:#f92672>:</span> TEXCOORD0;
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    Varyings Vert(Attributes input)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        Varyings output <span style=color:#f92672>=</span> (Varyings)<span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>        VertexPositionInputs vertexInput <span style=color:#f92672>=</span> GetVertexPositionInputs(input.positionOS.xyz);
+</span></span><span style=display:flex><span>        output.positionCS <span style=color:#f92672>=</span> vertexInput.positionCS;
+</span></span><span style=display:flex><span>        output.uv <span style=color:#f92672>=</span> input.texcoord;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> output;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float4</span> Frag(Varyings input) <span style=color:#f92672>:</span> SV_TARGET
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float2</span> upsideDown <span style=color:#f92672>=</span> input.uv;
+</span></span><span style=display:flex><span><span style=color:#75715e>#if RENDERTEXTURE_UPSIDE_DOWN</span>
+</span></span><span style=display:flex><span>        upsideDown <span style=color:#f92672>=</span> <span style=color:#66d9ef>float2</span>(input.uv.x, <span style=color:#ae81ff>1</span> <span style=color:#f92672>-</span> input.uv.y);
+</span></span><span style=display:flex><span><span style=color:#75715e>#endif</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float2</span> uvOne <span style=color:#f92672>=</span> <span style=color:#66d9ef>float2</span>(upsideDown.x <span style=color:#f92672>*</span> <span style=color:#ae81ff>2</span>, upsideDown.y);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float2</span> uvTwo <span style=color:#f92672>=</span> <span style=color:#66d9ef>float2</span>(upsideDown.x <span style=color:#f92672>*</span> <span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>, upsideDown.y);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float4</span> returnColor <span style=color:#f92672>=</span> <span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (input.uv.x <span style=color:#f92672>&gt;=</span> <span style=color:#ae81ff>0.5</span>)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>float4</span> texColor <span style=color:#f92672>=</span> _MainTex.SampleLevel(sampler_PointClamp, uvTwo, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span><span style=color:#75715e>#if RENDERTEXTURE_UPSIDE_DOWN</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>float2</span> realTexcoord <span style=color:#f92672>=</span> <span style=color:#66d9ef>float2</span>(input.uv.x <span style=color:#f92672>*</span> <span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>, input.uv.y);
+</span></span><span style=display:flex><span>            realTexcoord <span style=color:#f92672>=</span> floor(realTexcoord<span style=color:#f92672>*</span> _MainTex_TexelSize.zw) <span style=color:#f92672>+</span> <span style=color:#ae81ff>0.5</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>float</span> distance <span style=color:#f92672>=</span> length(texColor.xy <span style=color:#f92672>*</span> _MainTex_TexelSize.zw <span style=color:#f92672>-</span> realTexcoord);
+</span></span><span style=display:flex><span><span style=color:#75715e>#else</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>float2</span> realTexcoord <span style=color:#f92672>=</span> uvTwo;
+</span></span><span style=display:flex><span>            realTexcoord <span style=color:#f92672>=</span> floor(realTexcoord <span style=color:#f92672>*</span> _MainTex_TexelSize.zw) <span style=color:#f92672>+</span> <span style=color:#ae81ff>0.5</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>float</span> distance <span style=color:#f92672>=</span> length(texColor.xy <span style=color:#f92672>*</span> _MainTex_TexelSize.zw <span style=color:#f92672>-</span> realTexcoord);
+</span></span><span style=display:flex><span><span style=color:#75715e>#endif</span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>float</span> grayScale <span style=color:#f92672>=</span> smoothstep(_Distance, <span style=color:#ae81ff>0</span>, distance);
+</span></span><span style=display:flex><span>            returnColor <span style=color:#f92672>=</span> <span style=color:#66d9ef>float4</span>(grayScale, grayScale, grayScale, <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>else</span>
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            returnColor <span style=color:#f92672>=</span> _MainTex.SampleLevel(sampler_PointClamp, uvOne, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> returnColor;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    ENDHLSL
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    SubShader
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        Tags { <span style=color:#e6db74>&#34;RenderType&#34;</span><span style=color:#f92672>=</span><span style=color:#e6db74>&#34;Opaque&#34;</span> }
+</span></span><span style=display:flex><span>        LOD <span style=color:#ae81ff>100</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        Pass
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            Name <span style=color:#e6db74>&#34;JFA Visualize Pass&#34;</span>
+</span></span><span style=display:flex><span>            Tags{<span style=color:#e6db74>&#34;LightMode&#34;</span> <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;UniversalForward&#34;</span>}
+</span></span><span style=display:flex><span>            Cull Back
+</span></span><span style=display:flex><span>            ZTest LEqual
+</span></span><span style=display:flex><span>            ZWrite On
+</span></span><span style=display:flex><span>            HLSLPROGRAM
+</span></span><span style=display:flex><span>            <span style=color:#960050;background-color:#1e0010>#</span>pragma vertex Vert
+</span></span><span style=display:flex><span>            <span style=color:#960050;background-color:#1e0010>#</span>pragma fragment Frag
+</span></span><span style=display:flex><span>            ENDHLSL
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div></div><footer class=post-footer><ul class=post-tags><li><a href=https://zznewclear13.github.io/tags/compute-shader/>Compute Shader</a></li><li><a href=https://zznewclear13.github.io/tags/signed-distance-field/>Signed Distance Field</a></li><li><a href=https://zznewclear13.github.io/tags/jump-flooding-algorithm/>Jump Flooding Algorithm</a></li></ul><nav class=paginav><a class=prev href=https://zznewclear13.github.io/posts/unity-space-transformation-overview/><span class=title>« Prev</span><br><span>Unity空间变换总览</span>
+</a><a class=next href=https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/><span class=title>Next »</span><br><span>使用Compute Shader计算球谐全局光照</span></a></nav></footer><div id=comments></div><script>let currentHugoTheme=window.localStorage.getItem("pref-theme");function loadComment(){const t=document.getElementById("comments");let n=currentHugoTheme=="dark"?"photon-dark":"github-light",e=document.createElement("script");e.src="https://utteranc.es/client.js",e.setAttribute("repo","zznewclear13/zznewclear13.github.io"),e.setAttribute("issue-term","pathname"),e.setAttribute("label","utterances"),e.setAttribute("theme",n),e.setAttribute("crossorigin","anonymous"),e.setAttribute("async",""),t.innerHTML="",t.appendChild(e)}loadComment(),document.getElementById("theme-toggle").onclick=async()=>{await new Promise(e=>setTimeout(e,200));let e=window.localStorage.getItem("pref-theme");e!=currentHugoTheme&&(currentHugoTheme=e,loadComment())}</script></article></main><footer class=footer><span>&copy; 2024 <a href=https://zznewclear13.github.io/>ZZNEWCLEAR13</a></span>
 <span>Powered by
 <a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a> &
-        <a href=https://github.com/adityatelange/hugo-PaperMod/ rel=noopener target=_blank>PaperMod</a></span></footer><script>let menu=document.getElementById('menu');menu&&(menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)}),document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener("click",function(b){b.preventDefault();var a=this.getAttribute("href").substr(1);window.matchMedia('(prefers-reduced-motion: reduce)').matches?document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView({behavior:"smooth"}),a==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${a}`)})})</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove('dark'),localStorage.setItem("pref-theme",'light')):(document.body.classList.add('dark'),localStorage.setItem("pref-theme",'dark'))})</script><script>document.querySelectorAll('pre > code').forEach(b=>{const c=b.parentNode.parentNode,a=document.createElement('button');a.classList.add('copy-code'),a.innerHTML='copy';function d(){a.innerHTML='copied!',setTimeout(()=>{a.innerHTML='copy'},2e3)}a.addEventListener('click',e=>{if('clipboard'in navigator){navigator.clipboard.writeText(b.textContent),d();return}const a=document.createRange();a.selectNodeContents(b);const c=window.getSelection();c.removeAllRanges(),c.addRange(a);try{document.execCommand('copy'),d()}catch(a){}c.removeRange(a)}),c.classList.contains("highlight")?c.appendChild(a):c.parentNode.firstChild==c||(b.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName=="TABLE"?b.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(a):b.parentNode.appendChild(a))})</script></body></html>
+        <a href=https://github.com/adityatelange/hugo-PaperMod/ rel=noopener target=_blank>PaperMod</a></span></footer><script>let menu=document.getElementById("menu");menu&&(menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)}),document.querySelectorAll('a[href^="#"]').forEach(e=>{e.addEventListener("click",function(e){e.preventDefault();var t=this.getAttribute("href").substr(1);window.matchMedia("(prefers-reduced-motion: reduce)").matches?document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView({behavior:"smooth"}),t==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${t}`)})})</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove("dark"),localStorage.setItem("pref-theme","light")):(document.body.classList.add("dark"),localStorage.setItem("pref-theme","dark"))})</script><script>document.querySelectorAll("pre > code").forEach(e=>{const n=e.parentNode.parentNode,t=document.createElement("button");t.classList.add("copy-code"),t.innerHTML="copy";function s(){t.innerHTML="copied!",setTimeout(()=>{t.innerHTML="copy"},2e3)}t.addEventListener("click",t=>{if("clipboard"in navigator){navigator.clipboard.writeText(e.textContent),s();return}const n=document.createRange();n.selectNodeContents(e);const o=window.getSelection();o.removeAllRanges(),o.addRange(n);try{document.execCommand("copy"),s()}catch{}o.removeRange(n)}),n.classList.contains("highlight")?n.appendChild(t):n.parentNode.firstChild==n||(e.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName=="TABLE"?e.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(t):e.parentNode.appendChild(t))})</script></body></html>

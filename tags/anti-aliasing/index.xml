@@ -12,6 +12,7 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
     <lastBuildDate>Wed, 15 Dec 2021 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/anti-aliasing/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>在Unity的UI中绘制等宽的贝赛尔曲线</title>

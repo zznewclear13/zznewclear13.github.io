@@ -1,4 +1,5 @@
-<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>使用Compute Shader计算球谐全局光照 | ZZNEWCLEAR13</title><meta name=keywords content="Compute Shader,Spherical Harmonics"><meta name=description content="Compute Shader的一些应用方法."><meta name=author content="zznewclear13"><link rel=canonical href=https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/><link crossorigin=anonymous href=/assets/css/stylesheet.css rel="preload stylesheet" as=style><link rel=icon href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=32x32 href=https://zznewclear13.github.io/favicon.ico><link rel=apple-touch-icon href=https://zznewclear13.github.io/favicon.ico><link rel=mask-icon href=https://zznewclear13.github.io/favicon.ico><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><noscript><style>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--code-block-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css integrity=sha384-Um5gpz1odJg5Z4HAmzPtgZKdTBHZdw8S29IecapCSB31ligYPhHQZMIlWLYQGVoc crossorigin=anonymous><script defer src=https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js integrity=sha384-YNHdsYkH6gMx9y3mRkmcJ2mFUjTd0qNQQvY9VYZgQd7DcN7env35GzlmFaZ23JGp crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/contrib/auto-render.min.js integrity=sha384-vZTG03m+2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl crossorigin=anonymous onload=renderMathInElement(document.body)></script><script type=application/javascript>var doNotTrack=!1;doNotTrack||(function(a,e,f,g,b,c,d){a.GoogleAnalyticsObject=b,a[b]=a[b]||function(){(a[b].q=a[b].q||[]).push(arguments)},a[b].l=1*new Date,c=e.createElement(f),d=e.getElementsByTagName(f)[0],c.async=1,c.src=g,d.parentNode.insertBefore(c,d)}(window,document,'script','https://www.google-analytics.com/analytics.js','ga'),ga('create','UA-157509723-1','auto'),ga('send','pageview'))</script><meta property="og:title" content="使用Compute Shader计算球谐全局光照"><meta property="og:description" content="Compute Shader的一些应用方法."><meta property="og:type" content="article"><meta property="og:url" content="https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/"><meta property="og:image" content="https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/posts/images/SphericalHarmonics.jpg"><meta property="article:section" content="posts"><meta property="article:published_time" content="2021-06-17T19:00:00+08:00"><meta property="article:modified_time" content="2021-06-17T19:00:00+08:00"><meta property="og:site_name" content="ZZNEWCLEAR13"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/posts/images/SphericalHarmonics.jpg"><meta name=twitter:title content="使用Compute Shader计算球谐全局光照"><meta name=twitter:description content="Compute Shader的一些应用方法."><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://zznewclear13.github.io/posts/"},{"@type":"ListItem","position":2,"name":"使用Compute Shader计算球谐全局光照","item":"https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"使用Compute Shader计算球谐全局光照","name":"使用Compute Shader计算球谐全局光照","description":"Compute Shader的一些应用方法.","keywords":["Compute Shader","Spherical Harmonics"],"articleBody":"为什么要用球谐函数来计算全局光照 在物体的渲染中，除了计算直接光照的BRDF之外，也要计算间接光照对物体的影响。在引擎中获取间接光照信息的方法通常是在场景中布置一个反射探针，离线渲染一个360度的场景贴图。这样在计算间接光照的高光部分的时候，可以使用视线在物体上的反射方向reflect(-viewDirection, normal)，对渲染好的贴图进行采样，再进行brdf的计算，因此这张贴图也会被称作是specular map；然而在计算间接光照的漫反射部分时，因为目标点会受到来自各个方向上的光线带来的漫反射，不能再简单的使用视线的反射来采样这张帖图。这时有两种解决办法，一种是采样这张贴图的mipmap，在一定程度上模糊的mipmap可以认为是综合了各个方向的光照的信息，另一种则是Ravi Ramamoorthi和Pat Hanrahan2001年在An Efficient Representation for Irradiance Environment Maps中提出的，通过球谐函数重新构建低频光照信息的方式，将其作为简介光漫反射部分的贴图。\n如何使用球谐函数重新构建光照信息 在Ravi Ramamoorthi的论文中他给出了球谐参数的计算公式和重构光照信息的公式： $$ \\tag*{球谐参数} L_{lm} = \\int_{\\theta = 0}^\\pi\\int_{\\theta = 0}^{2\\pi}L(\\theta)Y_{lm}(\\theta, \\phi)sin\\theta d\\theta d\\phi $$ $$ \\begin{align*}其中(x, y, z) \u0026= (sin\\theta cos\\phi, sin\\theta sin\\phi, cos\\theta) \\cr Y_{00}(\\theta, \\phi) \u0026= 0.282095 \\cr (Y_{11};Y_{10};Y_{1-1})(\\theta, \\phi) \u0026= 0.488603(x;z;y) \\cr (Y_{21};Y_{2-1};Y_{2-2})(\\theta, \\phi) \u0026= 1.092548(xz;yz;xy) \\cr Y_{20}(\\theta, \\phi) \u0026= 0.315392(3z^2 - 1) \\cr Y_{22}(\\theta, \\phi) \u0026= 0.546274(x^2 - y^2) \\end{align*} $$ $$ \\tag*{重构光照} \\begin{equation}\\begin{split} E(n) =\u0026\\ c_1L_{22}(x^2 - y^2) + c_3L_{20}z^2 + c_4L_{00} - c_5L_{20} \\cr +\u0026\\ 2c_1(L_{2-2}xy + L_{21}xz + L_{2-1}yz) \\cr +\u0026\\ 2c_2(L_{11}x + L_{1-1}y + L_{10}z)\\end{split}\\end{equation} $$ $$ 其中c1 = 0.429043, c2 = 0.511664, c3 = 0.743125, c4 = 0.886227, c5 = 0.247708 $$\n根据第一条式子，有两种采样的方法：一种是使用蒙特卡洛方法，以\\(Y_{lm}(\\theta, \\phi)sin\\theta\\)作为权重，随机取球面上均匀分布的方向采样高光贴图；另一种是以\\(Y_{lm}(\\theta, \\phi)sin\\theta \\)乘当前像素对应的立体角作为权重，采样高光贴图的所有像素。在这篇文章中我参考了Accardi Piero的Unity_SphericalHarmonics_Tools中的用Computes Shader采样所有像素的方法来计算球谐参数的方法，出于一些不知名的原因，计算权重的时候去掉\\(sin\\theta\\)这一项反而能得到正确的结果，这里还希望有人能够指正一下。\n使用球谐函数计算全局光照的漫反射部分 首先在Unity中创建CalculateSphericalHarmonics.cs, SphericalHarmonicsComputeShader.compute, 和SphericalHarmonics.shader，分别用来执行Compute Shader，计算球谐参数和使用球谐参数重构光照。 我们这里使用grace作为我们的环境贴图，大概长这个样子。\nSphericalHarmonicsComputeShader.compute 在Compute Shader中我们需要做以下的操作：获取像素的位置；根据像素的位置，获取该像素的立体角和在球面上的方向，并采样球面获得像素的颜色；对每个像素计算出其方向对应的球谐基\\(Y_{lm}\\)；累积所有像素的立体角、颜色和球谐基的乘积，得到\\(4\\pi\\)倍的球谐参数。\n首先是获取像素的位置，立体角，方向和采样（Compute Shader中加不了中文注释，就只能将就了）：\n#pragma kernel CalculateSHMain\rTextureCube _CubeMapTexture;\rSamplerState sampler_LinearClamp;\r//_TextureSize and _DispatchCount are float3 but used as uint3\rfloat3 _TextureSize;\rfloat3 _DispatchCount;\r//Check if we are sampling inside texture\rbool CheckInRange(uint3 texturesize, uint3 dispatchThreadID)\r{\rreturn !any(dispatchThreadID = texturesize);\r}\r//Calculate direction from dispatchThreadID\rfloat3 GetDirectionFromIndex(uint3 textureSize, uint3 dispatchThreadID)\r{\rfloat2 uv = (dispatchThreadID.xy + 0.5) * rcp(textureSize.xy);\rfloat u = uv.x;\rfloat v = uv.y;\rfloat3 dir = float3(0, 0, 0);\rswitch (dispatchThreadID.z)\r{\rcase 0: //+X\rdir.x = 1;\rdir.y = v * -2.0f + 1.0f;\rdir.z = u * -2.0f + 1.0f;\rbreak;\rcase 1: //-X\rdir.x = -1;\rdir.y = v * -2.0f + 1.0f;\rdir.z = u * 2.0f - 1.0f;\rbreak;\rcase 2: //+Y\rdir.x = u * 2.0f - 1.0f;\rdir.y = 1.0f;\rdir.z = v * 2.0f - 1.0f;\rbreak;\rcase 3: //-Y\rdir.x = u * 2.0f - 1.0f;\rdir.y = -1.0f;\rdir.z = v * -2.0f + 1.0f;\rbreak;\rcase 4: //+Z\rdir.x = u * 2.0f - 1.0f;\rdir.y = v * -2.0f + 1.0f;\rdir.z = 1;\rbreak;\rcase 5: //-Z\rdir.x = u * -2.0f + 1.0f;\rdir.y = v * -2.0f + 1.0f;\rdir.z = -1;\rbreak;\r}\rreturn normalize(dir);\r}\rfloat AreaElement(float x, float y)\r{\rreturn atan2(x * y, sqrt(x * x + y * y + 1));\r}\r//Calculate solid angle\rfloat GetWeightFromIndex(uint3 textureSize, uint3 dispatchThreadID)\r{\rfloat2 invTextureSize = rcp(textureSize.xy);\rfloat2 uv = (dispatchThreadID.xy + 0.5) * invTextureSize;\ruv = uv * 2 - 1;\rfloat x0 = uv.x - invTextureSize.x;\rfloat y0 = uv.y - invTextureSize.y;\rfloat x1 = uv.x + invTextureSize.x;\rfloat y1 = uv.y + invTextureSize.y;\rreturn AreaElement(x0, y0) - AreaElement(x0, y1) - AreaElement(x1, y0) + AreaElement(x1, y1);\r}\r//Texture format is RGBA SFloat, so we do not need to decode sampleHDR\rfloat3 SampleCubeMap(TextureCube cubTex, float3 sampleDir)\r{\rfloat4 sampleHDR = cubTex.SampleLevel(sampler_LinearClamp, sampleDir, 0);\rreturn sampleHDR.rgb;\r}\r[numthreads(8, 8, 6)]\rvoid CalculateSHMain(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchThreadID)\r{\ruint indexGroup = groupID.z * _DispatchCount.x * _DispatchCount.y + groupID.y * _DispatchCount.x + groupID.x;\rbool inRange = CheckInRange(_TextureSize, dispatchThreadID);\rif (inRange)\r{\rfloat3 direction = GetDirectionFromIndex(_TextureSize, dispatchThreadID);\rfloat weight = GetWeightFromIndex(_TextureSize, dispatchThreadID);\r//I leave out sin(theta) term here\rfloat3 sampleColor = SampleCubeMap(_CubeMapTexture, direction).rgb * weight;// * sqrt(1 - direction.z * direction.z);\r}\r}\r按照之前的公式计算球谐基：\nstruct SHBasis\r{\rfloat y00;\rfloat y1p1;\rfloat y10;\rfloat y1n1;\rfloat y2p1;\rfloat y2n1;\rfloat y2n2;\rfloat y20;\rfloat y2p2;\r};\rSHBasis Evaluate(float3 normal)\r{\rSHBasis shBasis = (SHBasis)0;\rshBasis.y00 = 0.2820947917f;\rshBasis.y1p1 = 0.4886025119f * normal.y;\rshBasis.y10 = 0.4886025119f * normal.z;\rshBasis.y1n1 = 0.4886025119f * normal.x;\rshBasis.y2p1 = 1.0925484306f * normal.x * normal.y;\rshBasis.y2n1 = 1.0925484306f * normal.y * normal.z;\rshBasis.y2n2= 0.3153915652f * (3 * normal.z * normal.z - 1.0f);\rshBasis.y20 = 1.0925484306f * normal.x * normal.z;\rshBasis.y2p2 = 0.5462742153f * (normal.x * normal.x - normal.y * normal.y);\rreturn shBasis;\r}\r由于Compute Shader的groupshared memory有大小限制，这里我们传入一个_SHPackIndex，分三次计算球谐参数，每次计算三个float3：\n//Pack 3 coeffs in one struct\rstruct CoeffsPack3\r{\rfloat3 coeff0;\rfloat3 coeff1;\rfloat3 coeff2;\r};\rfloat _SHPackIndex;\rgroupshared CoeffsPack3 coeffs[8 * 8 * 6];\r[numthreads(8, 8, 6)]\rvoid CalculateSHMain(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchThreadID)\r{\ruint indexGroup = groupID.z * _DispatchCount.x * _DispatchCount.y + groupID.y * _DispatchCount.x + groupID.x;\rbool inRange = CheckInRange(_TextureSize, dispatchThreadID);\rif (inRange)\r{\rfloat3 direction = GetDirectionFromIndex(_TextureSize, dispatchThreadID);\rfloat weight = GetWeightFromIndex(_TextureSize, dispatchThreadID);\r//I leave out sin(theta) term here\rfloat3 sampleColor = SampleCubeMap(_CubeMapTexture, direction).rgb * weight;// * sqrt(1 - direction.z * direction.z);\rSHBasis shBasis = Evaluate(direction);\rCoeffsPack3 tempCoeffs = (CoeffsPack3)0;\rswitch ((uint)_SHPackIndex)\r{\rcase 0:\rtempCoeffs.coeff0 = shBasis.y00 * sampleColor;\rtempCoeffs.coeff1 = shBasis.y1p1 * sampleColor;\rtempCoeffs.coeff2 = shBasis.y10 * sampleColor;\rbreak;\rcase 1:\rtempCoeffs.coeff0 = shBasis.y1n1 * sampleColor;\rtempCoeffs.coeff1 = shBasis.y2p1 * sampleColor;\rtempCoeffs.coeff2 = shBasis.y2n1 * sampleColor;\rbreak;\rcase 2:\rtempCoeffs.coeff0 = shBasis.y2n2 * sampleColor;\rtempCoeffs.coeff1 = shBasis.y20 * sampleColor;\rtempCoeffs.coeff2 = shBasis.y2p2 * sampleColor;\rbreak;\rdefault:\rbreak;\r}\rcoeffs[groupIndex] = tempCoeffs;\r}\r}\r最后是对groupshared CoeffsPack3 coeffs[8 * 8 * 6]求和，在GPU Gems 3中介绍了一种多线程的求和算法Parallel Prefix Sum (Scan) with CUDA，这样就能使用GPU来对每一个Thread Group求和并输出到RWStructuredBuffer中了，最后再在CPU中求所有Thread Group的和：\nRWStructuredBuffer _GroupCoefficients;\rCoeffsPack3 CoeffsAdd(CoeffsPack3 coeffsA, CoeffsPack3 coeffsB)\r{\rCoeffsPack3 tempCoeffs = (CoeffsPack3)0;\rtempCoeffs.coeff0 = coeffsA.coeff0 + coeffsB.coeff0;\rtempCoeffs.coeff1 = coeffsA.coeff1 + coeffsB.coeff1;\rtempCoeffs.coeff2 = coeffsA.coeff2 + coeffsB.coeff2;\rreturn tempCoeffs;\r}\rvoid SumUp(uint groupIndex, uint indexGroup)\r{\rGroupMemoryBarrierWithGroupSync();\ruint faceIndex = groupIndex % 64;\rif (faceIndex 这样我们就写好了Compute Shader中所有的内容了，现在只需要把所有需要的参数传入Compute Shader就可以了。\nCalculateHarmonics.cs C#脚本中就没什么特别的操作了，创建Compute Buffer，传递到Compute Shader中，执行Compute Shader就能得到包含了每一个Thread Group的球谐参数的和的一个长度为(8 * 8 * 6)，每个参数包含3个float3的数组，对这个数组求和之后再除以\\(4\\pi\\)就能得到最终的球谐参数的三项了。执行三个循环，就能获得全部的球谐参数，最后再传递给相应的shader:\nusing System.Collections; using System.Collections.Generic; using System; using UnityEngine; using UnityEditor; using Unity.Mathematics; public class CalculateSphericalHarmonics : EditorWindow, IDisposable { struct CoeffsPack3 { public float3 coeff0; public float3 coeff1; public float3 coeff2; public CoeffsPack3(float x) { coeff0 = new float3(x); coeff1 = new float3(x); coeff2 = new float3(x); } } private CoeffsPack3 SumCoeffs(CoeffsPack3[] coeffsArray) { CoeffsPack3 tempCoeffs = new CoeffsPack3(0); for (int i = 0; i return tempCoeffs; } private Cubemap cubeMap; private ComputeShader sphericalHarmonicsComputeShader; private ComputeBuffer pack3Buffer; private ComputeBuffer coefficiencesBuffer; private CoeffsPack3[] pack3Array; public class Coefficience : ScriptableObject { public float3[] coefficiencesArray; } private Coefficience coefficience; private MeshRenderer targetMesh; private void OnEnable() { coefficience = CreateInstance(); } [MenuItem(\"zznewclear13/Calculate Spherical Harmonics\")] public static CalculateSphericalHarmonics GetWindow() { CalculateSphericalHarmonics window = GetWindow(\"Calculate Spherical Harmonics\"); return window; } Rect baseRect { get { return new Rect(20f, 20f, position.width - 40f, position.height - 40f); } } private void OnGUI() { using (new GUILayout.AreaScope(baseRect)) { if (!EditorGUIUtility.wideMode) { EditorGUIUtility.wideMode = true; EditorGUIUtility.labelWidth = EditorGUIUtility.currentViewWidth - 212; } cubeMap = (Cubemap)EditorGUILayout.ObjectField(\"Cube Map\", cubeMap, typeof(Cubemap), false); sphericalHarmonicsComputeShader = (ComputeShader)EditorGUILayout.ObjectField(\"Compute Shader\", sphericalHarmonicsComputeShader, typeof(ComputeShader), false); targetMesh = (MeshRenderer)EditorGUILayout.ObjectField(\"Target Mesh\", targetMesh, typeof(MeshRenderer), true); EditorGUILayout.Space(); using (new EditorGUI.DisabledGroupScope(!sphericalHarmonicsComputeShader)) { if (GUILayout.Button(\"Calculate!\", GUILayout.Height(30f))) { if (cubeMap == null) { cubeMap = new Cubemap(256, TextureFormat.RGBAFloat, false); } Calculate(); SetBuffer(); } } EditorGUILayout.Space(); using (new EditorGUI.DisabledGroupScope(true)) { if(coefficience != null) { SerializedObject serializedObject = new SerializedObject(coefficience); SerializedProperty arrayProperty = serializedObject.FindProperty(\"coefficiencesArray\"); EditorGUILayout.PropertyField(arrayProperty, true); serializedObject.ApplyModifiedProperties(); } } } } private void Calculate() { coefficience.coefficiencesArray = new float3[9]; int kernel = sphericalHarmonicsComputeShader.FindKernel(\"CalculateSHMain\"); sphericalHarmonicsComputeShader.GetKernelThreadGroupSizes(kernel, out uint x, out uint y, out uint z); Vector3Int dispatchCounts = new Vector3Int(Mathf.CeilToInt((float)cubeMap.width / (float)x), Mathf.CeilToInt((float)cubeMap.height / (float)y), Mathf.CeilToInt((float)6 / (float)z)); if (pack3Buffer != null) { pack3Buffer.Release(); } pack3Buffer = new ComputeBuffer(dispatchCounts.x * dispatchCounts.y * dispatchCounts.z, 3 * 3 * 4, ComputeBufferType.Structured); pack3Array = new CoeffsPack3[dispatchCounts.x * dispatchCounts.y * dispatchCounts.z]; for (int i = 0; i new CoeffsPack3(0); } pack3Buffer.SetData(pack3Array); //用于确认传入的参数  Debug.Log(\"_TextureSize: \" + cubeMap.width + \", \" + cubeMap.height + \", \" + 6); Debug.Log(\"_ThreadGroups: \" + x + \", \" + y + \", \" + z); Debug.Log(\"_DispatchCounts: \" + dispatchCounts.x + \", \" + dispatchCounts.y + \", \" + dispatchCounts.z); Debug.Log(\"_GroupCounts: \" + dispatchCounts.x * dispatchCounts.y * dispatchCounts.z); Debug.Log(\"_GroupThreadCounts: \" + x * y * z); Debug.Log(\"_CubeMapTexture: \" + cubeMap.name); Debug.Log(\"---------------------------------\"); sphericalHarmonicsComputeShader.SetTexture(kernel, \"_CubeMapTexture\", cubeMap); sphericalHarmonicsComputeShader.SetBuffer(kernel, \"_GroupCoefficients\", pack3Buffer); sphericalHarmonicsComputeShader.SetVector(\"_DispatchCount\", (Vector3)dispatchCounts); sphericalHarmonicsComputeShader.SetVector(\"_TextureSize\", new Vector3(cubeMap.width, cubeMap.height, 6)); float inv4PI = 0.25f / Mathf.PI; //分三次，每次计算三个球谐参数  for (int shPackIndex = 0; shPackIndex 3; shPackIndex++) { sphericalHarmonicsComputeShader.SetFloat(\"_SHPackIndex\", shPackIndex); sphericalHarmonicsComputeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z); Debug.Log(\"Dispatch with (\" + dispatchCounts.x + \", \" + dispatchCounts.y + \", \" + dispatchCounts.z + \").\"); pack3Buffer.GetData(pack3Array); CoeffsPack3 tempCoeffs = SumCoeffs(pack3Array); coefficience.coefficiencesArray[shPackIndex * 3 + 0] = tempCoeffs.coeff0 * inv4PI; coefficience.coefficiencesArray[shPackIndex * 3 + 1] = tempCoeffs.coeff1 * inv4PI; coefficience.coefficiencesArray[shPackIndex * 3 + 2] = tempCoeffs.coeff2 * inv4PI; } pack3Buffer.Release(); string debugLog = \"\"; for (int i = 0; i 9; i++) { debugLog += coefficience.coefficiencesArray[i] + \"...\"; } } //给对应的mesh renderer的材质传入buffer  private void SetBuffer() { if(coefficiencesBuffer != null) { coefficiencesBuffer.Release(); } coefficiencesBuffer = new ComputeBuffer(9, 3 * 4, ComputeBufferType.Structured); coefficiencesBuffer.SetData(coefficience.coefficiencesArray); targetMesh.sharedMaterial.SetBuffer(\"_CoefficienceBuffer\", coefficiencesBuffer); } public void Dispose() { pack3Buffer.Release(); coefficiencesBuffer.Release(); } } SphericalHarmonics.shader 从传入的StructuredBuffer中获取球谐参数，计算辐照度，同时我还增加了一个选项，用于对比我计算出的球谐参数和实际的球谐参数：\nShader \"Unlit/SphericalHarmonicsShader\"\r{\rProperties\r{\r[Toggle(USE_GRACE)]_Use_Grace (\"Use Grace\", float) = 1\r}\rHLSLINCLUDE\r#include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl\"\r#include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl\"\r#pragma multi_compile _ USE_GRACE\r#if USE_GRACE\r#define Coeffs grace\r#else\r#define Coeffs _CoefficienceBuffer\r#endif\rStructuredBuffer _CoefficienceBuffer;\rstatic float3 grace[] =\r{\rfloat3(0.7953949, 0.4405923, 0.5459412),\rfloat3(0.3981450, 0.3526911, 0.6097158),\rfloat3(-0.3424573, -0.1838151, -0.2715583),\rfloat3(-0.2944621, -0.0560606, 0.0095193),\rfloat3(-0.1123051, -0.0513088, -0.1232869),\rfloat3(-0.2645007, -0.2257996, -0.4785847),\rfloat3(-0.1569444, -0.0954703, -0.1485053),\rfloat3(0.5646247, 0.2161586, 0.1402643),\rfloat3(0.2137442, -0.0547578, -0.3061700)\r};\rstruct Attributes\r{\rfloat4 positionOS : POSITION;\rfloat2 uv : TEXCOORD0;\rfloat3 normalOS : NORMAL;\r};\rstruct Varyings\r{\rfloat4 positionCS : SV_POSITION;\rfloat2 texcoord : TEXCOORD0;\rfloat3 normalWS : TEXCOORD1;\r};\rfloat3 CalcIrradiance(float3 nor) { float c1 = 0.429043;\rfloat c2 = 0.511664;\rfloat c3 = 0.743125;\rfloat c4 = 0.886227;\rfloat c5 = 0.247708;\rreturn (\rc1 * Coeffs[8] * (nor.x * nor.x - nor.y * nor.y) +\rc3 * Coeffs[6] * nor.z * nor.z +\rc4 * Coeffs[0] -\rc5 * Coeffs[6] +\r2.0 * c1 * Coeffs[4] * nor.x * nor.y +\r2.0 * c1 * Coeffs[7] * nor.x * nor.z +\r2.0 * c1 * Coeffs[5] * nor.y * nor.z +\r2.0 * c2 * Coeffs[3] * nor.x +\r2.0 * c2 * Coeffs[1] * nor.y +\r2.0 * c2 * Coeffs[2] * nor.z\r);\r}\rVaryings Vert(Attributes input)\r{\rVaryings output = (Varyings)0;\rVertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);\rVertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS);\routput.positionCS = vertexInput.positionCS;\routput.texcoord = input.uv;\routput.normalWS = normalInput.normalWS;\rreturn output;\r}\rfloat4 Frag(Varyings input) : SV_TARGET\r{\rfloat3 shColor = CalcIrradiance(normalize(input.normalWS));\rreturn float4(shColor, 1);\r}\rENDHLSL\rSubShader\r{\rPass\r{\rName \"Spherical Harmonics Pass\"\rTags{\"LightMode\" = \"UniversalForward\"}\rCull Back\rZTest LEqual\rZWrite On\rHLSLPROGRAM\r#pragma vertex Vert\r#pragma fragment Frag\rENDHLSL\r}\r}\r}\r最后点击“Calculate!”就能看到我们重新构建的全局光照的漫反射部分的光照信息了，大概就是这个样子。\n","wordCount":"1911","inLanguage":"en","image":"https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/posts/images/SphericalHarmonics.jpg","datePublished":"2021-06-17T19:00:00+08:00","dateModified":"2021-06-17T19:00:00+08:00","author":{"@type":"Person","name":"zznewclear13"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/"},"publisher":{"@type":"Organization","name":"ZZNEWCLEAR13","logo":{"@type":"ImageObject","url":"https://zznewclear13.github.io/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add('dark'):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove('dark'):window.matchMedia('(prefers-color-scheme: dark)').matches&&document.body.classList.add('dark')</script><header class=header><nav class=nav><div class=logo><a href=https://zznewclear13.github.io/ accesskey=h title="ZZNEWCLEAR13 (Alt + H)"><img src=https://zznewclear13.github.io/apple-touch-icon.png alt aria-label=logo height=35>ZZNEWCLEAR13</a><div class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div><ul id=menu><li><a href=https://zznewclear13.github.io/now/ title=进行时><span>进行时</span></a></li><li><a href=https://zznewclear13.github.io/tags/ title=标签><span>标签</span></a></li><li><a href=https://zznewclear13.github.io/categories/ title=分类><span>分类</span></a></li><li><a href=https://zznewclear13.github.io/links/ title=友情链接><span>友情链接</span></a></li><li><a href=https://zznewclear13.github.io/search/ title="🔎 (Alt + /)" accesskey=/><span>🔎</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://zznewclear13.github.io/>Home</a>&nbsp;»&nbsp;<a href=https://zznewclear13.github.io/posts/>Posts</a></div><h1 class="post-title entry-hint-parent">使用Compute Shader计算球谐全局光照</h1><div class=post-description>Compute Shader的一些应用方法.</div><div class=post-meta><span title="2021-06-17 19:00:00 +0800 CST">June 17, 2021</span>&nbsp;·&nbsp;zznewclear13&nbsp;|&nbsp;<a href=https://github.com/zznewclear13/zznewclear13.com/blob/main/content/posts/calculate-spherical-harmonics-using-compute-shader.md rel="noopener noreferrer" target=_blank>编辑</a></div></header><figure class=entry-cover><img loading=eager src=https://zznewclear13.github.io/posts/images/SphericalHarmonics.jpg alt="Spherical Harmonics Cover"><p>Spherical Harmonics Result</p></figure><div class=toc><details open><summary accesskey=c title="(Alt + C)"><div class=details>使用Compute Shader计算球谐全局光照</div></summary><div class=inner><ul><li><a href=#%e4%b8%ba%e4%bb%80%e4%b9%88%e8%a6%81%e7%94%a8%e7%90%83%e8%b0%90%e5%87%bd%e6%95%b0%e6%9d%a5%e8%ae%a1%e7%ae%97%e5%85%a8%e5%b1%80%e5%85%89%e7%85%a7 aria-label=为什么要用球谐函数来计算全局光照>为什么要用球谐函数来计算全局光照</a></li><li><a href=#%e5%a6%82%e4%bd%95%e4%bd%bf%e7%94%a8%e7%90%83%e8%b0%90%e5%87%bd%e6%95%b0%e9%87%8d%e6%96%b0%e6%9e%84%e5%bb%ba%e5%85%89%e7%85%a7%e4%bf%a1%e6%81%af aria-label=如何使用球谐函数重新构建光照信息>如何使用球谐函数重新构建光照信息</a></li><li><a href=#%e4%bd%bf%e7%94%a8%e7%90%83%e8%b0%90%e5%87%bd%e6%95%b0%e8%ae%a1%e7%ae%97%e5%85%a8%e5%b1%80%e5%85%89%e7%85%a7%e7%9a%84%e6%bc%ab%e5%8f%8d%e5%b0%84%e9%83%a8%e5%88%86 aria-label=使用球谐函数计算全局光照的漫反射部分>使用球谐函数计算全局光照的漫反射部分</a><ul><li><a href=#sphericalharmonicscomputeshadercompute aria-label=SphericalHarmonicsComputeShader.compute>SphericalHarmonicsComputeShader.compute</a></li><li><a href=#calculateharmonicscs aria-label=CalculateHarmonics.cs>CalculateHarmonics.cs</a></li><li><a href=#sphericalharmonicsshader aria-label=SphericalHarmonics.shader>SphericalHarmonics.shader</a></li></ul></li></ul></div></details></div><div class=post-content><h2 id=为什么要用球谐函数来计算全局光照>为什么要用球谐函数来计算全局光照<a hidden class=anchor aria-hidden=true href=#为什么要用球谐函数来计算全局光照>#</a></h2><p>在物体的渲染中，除了计算直接光照的BRDF之外，也要计算间接光照对物体的影响。在引擎中获取间接光照信息的方法通常是在场景中布置一个反射探针，离线渲染一个360度的场景贴图。这样在计算间接光照的高光部分的时候，可以使用视线在物体上的反射方向<code>reflect(-viewDirection, normal)</code>，对渲染好的贴图进行采样，再进行brdf的计算，因此这张贴图也会被称作是specular map；然而在计算间接光照的漫反射部分时，因为目标点会受到来自各个方向上的光线带来的漫反射，不能再简单的使用视线的反射来采样这张帖图。这时有两种解决办法，一种是采样这张贴图的mipmap，在一定程度上模糊的mipmap可以认为是综合了各个方向的光照的信息，另一种则是Ravi Ramamoorthi和Pat Hanrahan2001年在<a href=https://cseweb.ucsd.edu/~ravir/papers/envmap/envmap.pdf>An Efficient Representation for Irradiance Environment Maps</a>中提出的，通过球谐函数重新构建低频光照信息的方式，将其作为简介光漫反射部分的贴图。</p><h2 id=如何使用球谐函数重新构建光照信息>如何使用球谐函数重新构建光照信息<a hidden class=anchor aria-hidden=true href=#如何使用球谐函数重新构建光照信息>#</a></h2><p>在Ravi Ramamoorthi的论文中他给出了球谐参数的计算公式和重构光照信息的公式：
+<!doctype html><html lang=en dir=auto><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><meta name=robots content="index, follow"><title>使用Compute Shader计算球谐全局光照 | ZZNEWCLEAR13</title>
+<meta name=keywords content="Compute Shader,Spherical Harmonics"><meta name=description content="Compute Shader的一些应用方法."><meta name=author content="zznewclear13"><link rel=canonical href=https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/><link crossorigin=anonymous href=/assets/css/stylesheet.css rel="preload stylesheet" as=style><link rel=icon href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=16x16 href=https://zznewclear13.github.io/favicon.ico><link rel=icon type=image/png sizes=32x32 href=https://zznewclear13.github.io/favicon.ico><link rel=apple-touch-icon href=https://zznewclear13.github.io/favicon.ico><link rel=mask-icon href=https://zznewclear13.github.io/favicon.ico><meta name=theme-color content="#2e2e33"><meta name=msapplication-TileColor content="#2e2e33"><link rel=alternate hreflang=en href=https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/><noscript><style>#theme-toggle,.top-link{display:none}</style><style>@media(prefers-color-scheme:dark){:root{--theme:rgb(29, 30, 32);--entry:rgb(46, 46, 51);--primary:rgb(218, 218, 219);--secondary:rgb(155, 156, 157);--tertiary:rgb(65, 66, 68);--content:rgb(196, 196, 197);--code-block-bg:rgb(46, 46, 51);--code-bg:rgb(55, 56, 62);--border:rgb(51, 51, 51)}.list{background:var(--theme)}.list:not(.dark)::-webkit-scrollbar-track{background:0 0}.list:not(.dark)::-webkit-scrollbar-thumb{border-color:var(--theme)}}</style></noscript><link rel=stylesheet href=https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css integrity=sha384-Um5gpz1odJg5Z4HAmzPtgZKdTBHZdw8S29IecapCSB31ligYPhHQZMIlWLYQGVoc crossorigin=anonymous><script defer src=https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js integrity=sha384-YNHdsYkH6gMx9y3mRkmcJ2mFUjTd0qNQQvY9VYZgQd7DcN7env35GzlmFaZ23JGp crossorigin=anonymous></script><script defer src=https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/contrib/auto-render.min.js integrity=sha384-vZTG03m+2yp6N6BNi5iM4rW4oIwk5DfcNdFfxkk9ZWpDriOkXX8voJBFrAO7MpVl crossorigin=anonymous onload=renderMathInElement(document.body)></script><script>var doNotTrack=!1;doNotTrack||(function(e,t,n,s,o,i,a){e.GoogleAnalyticsObject=o,e[o]=e[o]||function(){(e[o].q=e[o].q||[]).push(arguments)},e[o].l=1*new Date,i=t.createElement(n),a=t.getElementsByTagName(n)[0],i.async=1,i.src=s,a.parentNode.insertBefore(i,a)}(window,document,"script","https://www.google-analytics.com/analytics.js","ga"),ga("create","UA-157509723-1","auto"),ga("send","pageview"))</script><meta property="og:title" content="使用Compute Shader计算球谐全局光照"><meta property="og:description" content="Compute Shader的一些应用方法."><meta property="og:type" content="article"><meta property="og:url" content="https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/"><meta property="og:image" content="https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/posts/images/SphericalHarmonics.jpg"><meta property="article:section" content="posts"><meta property="article:published_time" content="2021-06-17T19:00:00+08:00"><meta property="article:modified_time" content="2021-06-17T19:00:00+08:00"><meta property="og:site_name" content="ZZNEWCLEAR13"><meta name=twitter:card content="summary_large_image"><meta name=twitter:image content="https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/posts/images/SphericalHarmonics.jpg"><meta name=twitter:title content="使用Compute Shader计算球谐全局光照"><meta name=twitter:description content="Compute Shader的一些应用方法."><script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Posts","item":"https://zznewclear13.github.io/posts/"},{"@type":"ListItem","position":2,"name":"使用Compute Shader计算球谐全局光照","item":"https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/"}]}</script><script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"使用Compute Shader计算球谐全局光照","name":"使用Compute Shader计算球谐全局光照","description":"Compute Shader的一些应用方法.","keywords":["Compute Shader","Spherical Harmonics"],"articleBody":"为什么要用球谐函数来计算全局光照 在物体的渲染中，除了计算直接光照的BRDF之外，也要计算间接光照对物体的影响。在引擎中获取间接光照信息的方法通常是在场景中布置一个反射探针，离线渲染一个360度的场景贴图。这样在计算间接光照的高光部分的时候，可以使用视线在物体上的反射方向reflect(-viewDirection, normal)，对渲染好的贴图进行采样，再进行brdf的计算，因此这张贴图也会被称作是specular map；然而在计算间接光照的漫反射部分时，因为目标点会受到来自各个方向上的光线带来的漫反射，不能再简单的使用视线的反射来采样这张帖图。这时有两种解决办法，一种是采样这张贴图的mipmap，在一定程度上模糊的mipmap可以认为是综合了各个方向的光照的信息，另一种则是Ravi Ramamoorthi和Pat Hanrahan2001年在An Efficient Representation for Irradiance Environment Maps中提出的，通过球谐函数重新构建低频光照信息的方式，将其作为简介光漫反射部分的贴图。\n如何使用球谐函数重新构建光照信息 在Ravi Ramamoorthi的论文中他给出了球谐参数的计算公式和重构光照信息的公式： $$ \\tag*{球谐参数} L_{lm} = \\int_{\\theta = 0}^\\pi\\int_{\\theta = 0}^{2\\pi}L(\\theta)Y_{lm}(\\theta, \\phi)sin\\theta d\\theta d\\phi $$ $$ \\begin{align*}其中(x, y, z) \u0026= (sin\\theta cos\\phi, sin\\theta sin\\phi, cos\\theta) \\cr Y_{00}(\\theta, \\phi) \u0026= 0.282095 \\cr (Y_{11};Y_{10};Y_{1-1})(\\theta, \\phi) \u0026= 0.488603(x;z;y) \\cr (Y_{21};Y_{2-1};Y_{2-2})(\\theta, \\phi) \u0026= 1.092548(xz;yz;xy) \\cr Y_{20}(\\theta, \\phi) \u0026= 0.315392(3z^2 - 1) \\cr Y_{22}(\\theta, \\phi) \u0026= 0.546274(x^2 - y^2) \\end{align*} $$ $$ \\tag*{重构光照} \\begin{equation}\\begin{split} E(n) =\u0026\\ c_1L_{22}(x^2 - y^2) + c_3L_{20}z^2 + c_4L_{00} - c_5L_{20} \\cr +\u0026\\ 2c_1(L_{2-2}xy + L_{21}xz + L_{2-1}yz) \\cr +\u0026\\ 2c_2(L_{11}x + L_{1-1}y + L_{10}z)\\end{split}\\end{equation} $$ $$ 其中c1 = 0.429043, c2 = 0.511664, c3 = 0.743125, c4 = 0.886227, c5 = 0.247708 $$\n根据第一条式子，有两种采样的方法：一种是使用蒙特卡洛方法，以\\(Y_{lm}(\\theta, \\phi)sin\\theta\\)作为权重，随机取球面上均匀分布的方向采样高光贴图；另一种是以\\(Y_{lm}(\\theta, \\phi)sin\\theta \\)乘当前像素对应的立体角作为权重，采样高光贴图的所有像素。在这篇文章中我参考了Accardi Piero的Unity_SphericalHarmonics_Tools中的用Computes Shader采样所有像素的方法来计算球谐参数的方法，出于一些不知名的原因，计算权重的时候去掉\\(sin\\theta\\)这一项反而能得到正确的结果，这里还希望有人能够指正一下。\n使用球谐函数计算全局光照的漫反射部分 首先在Unity中创建CalculateSphericalHarmonics.cs, SphericalHarmonicsComputeShader.compute, 和SphericalHarmonics.shader，分别用来执行Compute Shader，计算球谐参数和使用球谐参数重构光照。 我们这里使用grace作为我们的环境贴图，大概长这个样子。\nSphericalHarmonicsComputeShader.compute 在Compute Shader中我们需要做以下的操作：获取像素的位置；根据像素的位置，获取该像素的立体角和在球面上的方向，并采样球面获得像素的颜色；对每个像素计算出其方向对应的球谐基\\(Y_{lm}\\)；累积所有像素的立体角、颜色和球谐基的乘积，得到\\(4\\pi\\)倍的球谐参数。\n首先是获取像素的位置，立体角，方向和采样（Compute Shader中加不了中文注释，就只能将就了）：\n#pragma kernel CalculateSHMain TextureCube _CubeMapTexture; SamplerState sampler_LinearClamp; //_TextureSize and _DispatchCount are float3 but used as uint3 float3 _TextureSize; float3 _DispatchCount; //Check if we are sampling inside texture bool CheckInRange(uint3 texturesize, uint3 dispatchThreadID) { return !any(dispatchThreadID \u003e= texturesize); } //Calculate direction from dispatchThreadID float3 GetDirectionFromIndex(uint3 textureSize, uint3 dispatchThreadID) { float2 uv = (dispatchThreadID.xy + 0.5) * rcp(textureSize.xy); float u = uv.x; float v = uv.y; float3 dir = float3(0, 0, 0); switch (dispatchThreadID.z) { case 0: //+X dir.x = 1; dir.y = v * -2.0f + 1.0f; dir.z = u * -2.0f + 1.0f; break; case 1: //-X dir.x = -1; dir.y = v * -2.0f + 1.0f; dir.z = u * 2.0f - 1.0f; break; case 2: //+Y dir.x = u * 2.0f - 1.0f; dir.y = 1.0f; dir.z = v * 2.0f - 1.0f; break; case 3: //-Y dir.x = u * 2.0f - 1.0f; dir.y = -1.0f; dir.z = v * -2.0f + 1.0f; break; case 4: //+Z dir.x = u * 2.0f - 1.0f; dir.y = v * -2.0f + 1.0f; dir.z = 1; break; case 5: //-Z dir.x = u * -2.0f + 1.0f; dir.y = v * -2.0f + 1.0f; dir.z = -1; break; } return normalize(dir); } float AreaElement(float x, float y) { return atan2(x * y, sqrt(x * x + y * y + 1)); } //Calculate solid angle float GetWeightFromIndex(uint3 textureSize, uint3 dispatchThreadID) { float2 invTextureSize = rcp(textureSize.xy); float2 uv = (dispatchThreadID.xy + 0.5) * invTextureSize; uv = uv * 2 - 1; float x0 = uv.x - invTextureSize.x; float y0 = uv.y - invTextureSize.y; float x1 = uv.x + invTextureSize.x; float y1 = uv.y + invTextureSize.y; return AreaElement(x0, y0) - AreaElement(x0, y1) - AreaElement(x1, y0) + AreaElement(x1, y1); } //Texture format is RGBA SFloat, so we do not need to decode sampleHDR float3 SampleCubeMap(TextureCube cubTex, float3 sampleDir) { float4 sampleHDR = cubTex.SampleLevel(sampler_LinearClamp, sampleDir, 0); return sampleHDR.rgb; } [numthreads(8, 8, 6)] void CalculateSHMain(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchThreadID) { uint indexGroup = groupID.z * _DispatchCount.x * _DispatchCount.y + groupID.y * _DispatchCount.x + groupID.x; bool inRange = CheckInRange(_TextureSize, dispatchThreadID); if (inRange) { float3 direction = GetDirectionFromIndex(_TextureSize, dispatchThreadID); float weight = GetWeightFromIndex(_TextureSize, dispatchThreadID); //I leave out sin(theta) term here float3 sampleColor = SampleCubeMap(_CubeMapTexture, direction).rgb * weight;// * sqrt(1 - direction.z * direction.z); } } 按照之前的公式计算球谐基：\nstruct SHBasis { float y00; float y1p1; float y10; float y1n1; float y2p1; float y2n1; float y2n2; float y20; float y2p2; }; SHBasis Evaluate(float3 normal) { SHBasis shBasis = (SHBasis)0; shBasis.y00 = 0.2820947917f; shBasis.y1p1 = 0.4886025119f * normal.y; shBasis.y10 = 0.4886025119f * normal.z; shBasis.y1n1 = 0.4886025119f * normal.x; shBasis.y2p1 = 1.0925484306f * normal.x * normal.y; shBasis.y2n1 = 1.0925484306f * normal.y * normal.z; shBasis.y2n2= 0.3153915652f * (3 * normal.z * normal.z - 1.0f); shBasis.y20 = 1.0925484306f * normal.x * normal.z; shBasis.y2p2 = 0.5462742153f * (normal.x * normal.x - normal.y * normal.y); return shBasis; } 由于Compute Shader的groupshared memory有大小限制，这里我们传入一个_SHPackIndex，分三次计算球谐参数，每次计算三个float3：\n//Pack 3 coeffs in one struct struct CoeffsPack3 { float3 coeff0; float3 coeff1; float3 coeff2; }; float _SHPackIndex; groupshared CoeffsPack3 coeffs[8 * 8 * 6]; [numthreads(8, 8, 6)] void CalculateSHMain(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchThreadID) { uint indexGroup = groupID.z * _DispatchCount.x * _DispatchCount.y + groupID.y * _DispatchCount.x + groupID.x; bool inRange = CheckInRange(_TextureSize, dispatchThreadID); if (inRange) { float3 direction = GetDirectionFromIndex(_TextureSize, dispatchThreadID); float weight = GetWeightFromIndex(_TextureSize, dispatchThreadID); //I leave out sin(theta) term here float3 sampleColor = SampleCubeMap(_CubeMapTexture, direction).rgb * weight;// * sqrt(1 - direction.z * direction.z); SHBasis shBasis = Evaluate(direction); CoeffsPack3 tempCoeffs = (CoeffsPack3)0; switch ((uint)_SHPackIndex) { case 0: tempCoeffs.coeff0 = shBasis.y00 * sampleColor; tempCoeffs.coeff1 = shBasis.y1p1 * sampleColor; tempCoeffs.coeff2 = shBasis.y10 * sampleColor; break; case 1: tempCoeffs.coeff0 = shBasis.y1n1 * sampleColor; tempCoeffs.coeff1 = shBasis.y2p1 * sampleColor; tempCoeffs.coeff2 = shBasis.y2n1 * sampleColor; break; case 2: tempCoeffs.coeff0 = shBasis.y2n2 * sampleColor; tempCoeffs.coeff1 = shBasis.y20 * sampleColor; tempCoeffs.coeff2 = shBasis.y2p2 * sampleColor; break; default: break; } coeffs[groupIndex] = tempCoeffs; } } 最后是对groupshared CoeffsPack3 coeffs[8 * 8 * 6]求和，在GPU Gems 3中介绍了一种多线程的求和算法Parallel Prefix Sum (Scan) with CUDA，这样就能使用GPU来对每一个Thread Group求和并输出到RWStructuredBuffer中了，最后再在CPU中求所有Thread Group的和：\nRWStructuredBuffer\u003cCoeffsPack3\u003e _GroupCoefficients; CoeffsPack3 CoeffsAdd(CoeffsPack3 coeffsA, CoeffsPack3 coeffsB) { CoeffsPack3 tempCoeffs = (CoeffsPack3)0; tempCoeffs.coeff0 = coeffsA.coeff0 + coeffsB.coeff0; tempCoeffs.coeff1 = coeffsA.coeff1 + coeffsB.coeff1; tempCoeffs.coeff2 = coeffsA.coeff2 + coeffsB.coeff2; return tempCoeffs; } void SumUp(uint groupIndex, uint indexGroup) { GroupMemoryBarrierWithGroupSync(); uint faceIndex = groupIndex % 64; if (faceIndex \u003c 32) coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 32]); GroupMemoryBarrierWithGroupSync(); if (faceIndex \u003c 16) coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 16]); GroupMemoryBarrierWithGroupSync(); if (faceIndex \u003c 8) coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 8]); GroupMemoryBarrierWithGroupSync(); if (faceIndex \u003c 4) coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 4]); GroupMemoryBarrierWithGroupSync(); if (faceIndex \u003c 2) coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 2]); GroupMemoryBarrierWithGroupSync(); if (faceIndex \u003c 1) coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 1]); GroupMemoryBarrierWithGroupSync(); if (groupIndex == 0) { CoeffsPack3 output = coeffs[0]; output = CoeffsAdd(output, coeffs[64]); output = CoeffsAdd(output, coeffs[128]); output = CoeffsAdd(output, coeffs[192]); output = CoeffsAdd(output, coeffs[256]); output = CoeffsAdd(output, coeffs[320]); _GroupCoefficients[indexGroup] = output; } } [numthreads(8, 8, 6)] void CalculateSHMain(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchThreadID) { uint indexGroup = groupID.z * _DispatchCount.x * _DispatchCount.y + groupID.y * _DispatchCount.x + groupID.x; bool inRange = CheckInRange(_TextureSize, dispatchThreadID); if (inRange) { float3 direction = GetDirectionFromIndex(_TextureSize, dispatchThreadID); float weight = GetWeightFromIndex(_TextureSize, dispatchThreadID); //I leave out sin(theta) term here float3 sampleColor = SampleCubeMap(_CubeMapTexture, direction).rgb * weight;// * sqrt(1 - direction.z * direction.z); SHBasis shBasis = Evaluate(direction); CoeffsPack3 tempCoeffs = (CoeffsPack3)0; switch ((uint)_SHPackIndex) { case 0: tempCoeffs.coeff0 = shBasis.y00 * sampleColor; tempCoeffs.coeff1 = shBasis.y1p1 * sampleColor; tempCoeffs.coeff2 = shBasis.y10 * sampleColor; break; case 1: tempCoeffs.coeff0 = shBasis.y1n1 * sampleColor; tempCoeffs.coeff1 = shBasis.y2p1 * sampleColor; tempCoeffs.coeff2 = shBasis.y2n1 * sampleColor; break; case 2: tempCoeffs.coeff0 = shBasis.y2n2 * sampleColor; tempCoeffs.coeff1 = shBasis.y20 * sampleColor; tempCoeffs.coeff2 = shBasis.y2p2 * sampleColor; break; default: break; } coeffs[groupIndex] = tempCoeffs; } SumUp(groupIndex, indexGroup); } 这样我们就写好了Compute Shader中所有的内容了，现在只需要把所有需要的参数传入Compute Shader就可以了。\nCalculateHarmonics.cs C#脚本中就没什么特别的操作了，创建Compute Buffer，传递到Compute Shader中，执行Compute Shader就能得到包含了每一个Thread Group的球谐参数的和的一个长度为(8 * 8 * 6)，每个参数包含3个float3的数组，对这个数组求和之后再除以\\(4\\pi\\)就能得到最终的球谐参数的三项了。执行三个循环，就能获得全部的球谐参数，最后再传递给相应的shader:\nusing System.Collections; using System.Collections.Generic; using System; using UnityEngine; using UnityEditor; using Unity.Mathematics; public class CalculateSphericalHarmonics : EditorWindow, IDisposable { struct CoeffsPack3 { public float3 coeff0; public float3 coeff1; public float3 coeff2; public CoeffsPack3(float x) { coeff0 = new float3(x); coeff1 = new float3(x); coeff2 = new float3(x); } } private CoeffsPack3 SumCoeffs(CoeffsPack3[] coeffsArray) { CoeffsPack3 tempCoeffs = new CoeffsPack3(0); for (int i = 0; i \u003c coeffsArray.Length; i++) { tempCoeffs.coeff0 += coeffsArray[i].coeff0; tempCoeffs.coeff1 += coeffsArray[i].coeff1; tempCoeffs.coeff2 += coeffsArray[i].coeff2; } return tempCoeffs; } private Cubemap cubeMap; private ComputeShader sphericalHarmonicsComputeShader; private ComputeBuffer pack3Buffer; private ComputeBuffer coefficiencesBuffer; private CoeffsPack3[] pack3Array; public class Coefficience : ScriptableObject { public float3[] coefficiencesArray; } private Coefficience coefficience; private MeshRenderer targetMesh; private void OnEnable() { coefficience = CreateInstance(); } [MenuItem(\"zznewclear13/Calculate Spherical Harmonics\")] public static CalculateSphericalHarmonics GetWindow() { CalculateSphericalHarmonics window = GetWindow(\"Calculate Spherical Harmonics\"); return window; } Rect baseRect { get { return new Rect(20f, 20f, position.width - 40f, position.height - 40f); } } private void OnGUI() { using (new GUILayout.AreaScope(baseRect)) { if (!EditorGUIUtility.wideMode) { EditorGUIUtility.wideMode = true; EditorGUIUtility.labelWidth = EditorGUIUtility.currentViewWidth - 212; } cubeMap = (Cubemap)EditorGUILayout.ObjectField(\"Cube Map\", cubeMap, typeof(Cubemap), false); sphericalHarmonicsComputeShader = (ComputeShader)EditorGUILayout.ObjectField(\"Compute Shader\", sphericalHarmonicsComputeShader, typeof(ComputeShader), false); targetMesh = (MeshRenderer)EditorGUILayout.ObjectField(\"Target Mesh\", targetMesh, typeof(MeshRenderer), true); EditorGUILayout.Space(); using (new EditorGUI.DisabledGroupScope(!sphericalHarmonicsComputeShader)) { if (GUILayout.Button(\"Calculate!\", GUILayout.Height(30f))) { if (cubeMap == null) { cubeMap = new Cubemap(256, TextureFormat.RGBAFloat, false); } Calculate(); SetBuffer(); } } EditorGUILayout.Space(); using (new EditorGUI.DisabledGroupScope(true)) { if(coefficience != null) { SerializedObject serializedObject = new SerializedObject(coefficience); SerializedProperty arrayProperty = serializedObject.FindProperty(\"coefficiencesArray\"); EditorGUILayout.PropertyField(arrayProperty, true); serializedObject.ApplyModifiedProperties(); } } } } private void Calculate() { coefficience.coefficiencesArray = new float3[9]; int kernel = sphericalHarmonicsComputeShader.FindKernel(\"CalculateSHMain\"); sphericalHarmonicsComputeShader.GetKernelThreadGroupSizes(kernel, out uint x, out uint y, out uint z); Vector3Int dispatchCounts = new Vector3Int(Mathf.CeilToInt((float)cubeMap.width / (float)x), Mathf.CeilToInt((float)cubeMap.height / (float)y), Mathf.CeilToInt((float)6 / (float)z)); if (pack3Buffer != null) { pack3Buffer.Release(); } pack3Buffer = new ComputeBuffer(dispatchCounts.x * dispatchCounts.y * dispatchCounts.z, 3 * 3 * 4, ComputeBufferType.Structured); pack3Array = new CoeffsPack3[dispatchCounts.x * dispatchCounts.y * dispatchCounts.z]; for (int i = 0; i \u003c dispatchCounts.x * dispatchCounts.y * dispatchCounts.z; i++) { pack3Array[i] = new CoeffsPack3(0); } pack3Buffer.SetData(pack3Array); //用于确认传入的参数 Debug.Log(\"_TextureSize: \" + cubeMap.width + \", \" + cubeMap.height + \", \" + 6); Debug.Log(\"_ThreadGroups: \" + x + \", \" + y + \", \" + z); Debug.Log(\"_DispatchCounts: \" + dispatchCounts.x + \", \" + dispatchCounts.y + \", \" + dispatchCounts.z); Debug.Log(\"_GroupCounts: \" + dispatchCounts.x * dispatchCounts.y * dispatchCounts.z); Debug.Log(\"_GroupThreadCounts: \" + x * y * z); Debug.Log(\"_CubeMapTexture: \" + cubeMap.name); Debug.Log(\"---------------------------------\"); sphericalHarmonicsComputeShader.SetTexture(kernel, \"_CubeMapTexture\", cubeMap); sphericalHarmonicsComputeShader.SetBuffer(kernel, \"_GroupCoefficients\", pack3Buffer); sphericalHarmonicsComputeShader.SetVector(\"_DispatchCount\", (Vector3)dispatchCounts); sphericalHarmonicsComputeShader.SetVector(\"_TextureSize\", new Vector3(cubeMap.width, cubeMap.height, 6)); float inv4PI = 0.25f / Mathf.PI; //分三次，每次计算三个球谐参数 for (int shPackIndex = 0; shPackIndex \u003c 3; shPackIndex++) { sphericalHarmonicsComputeShader.SetFloat(\"_SHPackIndex\", shPackIndex); sphericalHarmonicsComputeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z); Debug.Log(\"Dispatch with (\" + dispatchCounts.x + \", \" + dispatchCounts.y + \", \" + dispatchCounts.z + \").\"); pack3Buffer.GetData(pack3Array); CoeffsPack3 tempCoeffs = SumCoeffs(pack3Array); coefficience.coefficiencesArray[shPackIndex * 3 + 0] = tempCoeffs.coeff0 * inv4PI; coefficience.coefficiencesArray[shPackIndex * 3 + 1] = tempCoeffs.coeff1 * inv4PI; coefficience.coefficiencesArray[shPackIndex * 3 + 2] = tempCoeffs.coeff2 * inv4PI; } pack3Buffer.Release(); string debugLog = \"\"; for (int i = 0; i \u003c 9; i++) { debugLog += coefficience.coefficiencesArray[i] + \"...\"; } } //给对应的mesh renderer的材质传入buffer private void SetBuffer() { if(coefficiencesBuffer != null) { coefficiencesBuffer.Release(); } coefficiencesBuffer = new ComputeBuffer(9, 3 * 4, ComputeBufferType.Structured); coefficiencesBuffer.SetData(coefficience.coefficiencesArray); targetMesh.sharedMaterial.SetBuffer(\"_CoefficienceBuffer\", coefficiencesBuffer); } public void Dispose() { pack3Buffer.Release(); coefficiencesBuffer.Release(); } } SphericalHarmonics.shader 从传入的StructuredBuffer中获取球谐参数，计算辐照度，同时我还增加了一个选项，用于对比我计算出的球谐参数和实际的球谐参数：\nShader \"Unlit/SphericalHarmonicsShader\" { Properties { [Toggle(USE_GRACE)]_Use_Grace (\"Use Grace\", float) = 1 } HLSLINCLUDE #include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl\" #include \"Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl\" #pragma multi_compile _ USE_GRACE #if USE_GRACE #define Coeffs grace #else #define Coeffs _CoefficienceBuffer #endif StructuredBuffer\u003cfloat3\u003e _CoefficienceBuffer; static float3 grace[] = { float3(0.7953949, 0.4405923, 0.5459412), float3(0.3981450, 0.3526911, 0.6097158), float3(-0.3424573, -0.1838151, -0.2715583), float3(-0.2944621, -0.0560606, 0.0095193), float3(-0.1123051, -0.0513088, -0.1232869), float3(-0.2645007, -0.2257996, -0.4785847), float3(-0.1569444, -0.0954703, -0.1485053), float3(0.5646247, 0.2161586, 0.1402643), float3(0.2137442, -0.0547578, -0.3061700) }; struct Attributes { float4 positionOS : POSITION; float2 uv : TEXCOORD0; float3 normalOS : NORMAL; }; struct Varyings { float4 positionCS : SV_POSITION; float2 texcoord : TEXCOORD0; float3 normalWS : TEXCOORD1; }; float3 CalcIrradiance(float3 nor) { float c1 = 0.429043; float c2 = 0.511664; float c3 = 0.743125; float c4 = 0.886227; float c5 = 0.247708; return ( c1 * Coeffs[8] * (nor.x * nor.x - nor.y * nor.y) + c3 * Coeffs[6] * nor.z * nor.z + c4 * Coeffs[0] - c5 * Coeffs[6] + 2.0 * c1 * Coeffs[4] * nor.x * nor.y + 2.0 * c1 * Coeffs[7] * nor.x * nor.z + 2.0 * c1 * Coeffs[5] * nor.y * nor.z + 2.0 * c2 * Coeffs[3] * nor.x + 2.0 * c2 * Coeffs[1] * nor.y + 2.0 * c2 * Coeffs[2] * nor.z ); } Varyings Vert(Attributes input) { Varyings output = (Varyings)0; VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz); VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS); output.positionCS = vertexInput.positionCS; output.texcoord = input.uv; output.normalWS = normalInput.normalWS; return output; } float4 Frag(Varyings input) : SV_TARGET { float3 shColor = CalcIrradiance(normalize(input.normalWS)); return float4(shColor, 1); } ENDHLSL SubShader { Pass { Name \"Spherical Harmonics Pass\" Tags{\"LightMode\" = \"UniversalForward\"} Cull Back ZTest LEqual ZWrite On HLSLPROGRAM #pragma vertex Vert #pragma fragment Frag ENDHLSL } } } 最后点击“Calculate!”就能看到我们重新构建的全局光照的漫反射部分的光照信息了，大概就是这个样子。\n","wordCount":"1911","inLanguage":"en","image":"https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/posts/images/SphericalHarmonics.jpg","datePublished":"2021-06-17T19:00:00+08:00","dateModified":"2021-06-17T19:00:00+08:00","author":{"@type":"Person","name":"zznewclear13"},"mainEntityOfPage":{"@type":"WebPage","@id":"https://zznewclear13.github.io/posts/calculate-spherical-harmonics-using-compute-shader/"},"publisher":{"@type":"Organization","name":"ZZNEWCLEAR13","logo":{"@type":"ImageObject","url":"https://zznewclear13.github.io/favicon.ico"}}}</script></head><body id=top><script>localStorage.getItem("pref-theme")==="dark"?document.body.classList.add("dark"):localStorage.getItem("pref-theme")==="light"?document.body.classList.remove("dark"):window.matchMedia("(prefers-color-scheme: dark)").matches&&document.body.classList.add("dark")</script><header class=header><nav class=nav><div class=logo><a href=https://zznewclear13.github.io/ accesskey=h title="ZZNEWCLEAR13 (Alt + H)"><img src=https://zznewclear13.github.io/apple-touch-icon.png alt aria-label=logo height=35>ZZNEWCLEAR13</a><div class=logo-switches><button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg></button></div></div><ul id=menu><li><a href=https://zznewclear13.github.io/now/ title=进行时><span>进行时</span></a></li><li><a href=https://zznewclear13.github.io/tags/ title=标签><span>标签</span></a></li><li><a href=https://zznewclear13.github.io/categories/ title=分类><span>分类</span></a></li><li><a href=https://zznewclear13.github.io/links/ title=友情链接><span>友情链接</span></a></li><li><a href=https://zznewclear13.github.io/search/ title="🔎 (Alt + /)" accesskey=/><span>🔎</span></a></li></ul></nav></header><main class=main><article class=post-single><header class=post-header><div class=breadcrumbs><a href=https://zznewclear13.github.io/>Home</a>&nbsp;»&nbsp;<a href=https://zznewclear13.github.io/posts/>Posts</a></div><h1 class="post-title entry-hint-parent">使用Compute Shader计算球谐全局光照</h1><div class=post-description>Compute Shader的一些应用方法.</div><div class=post-meta><span title='2021-06-17 19:00:00 +0800 CST'>June 17, 2021</span>&nbsp;·&nbsp;zznewclear13&nbsp;|&nbsp;<a href=https://github.com/zznewclear13/zznewclear13.com/blob/main/content/posts/calculate-spherical-harmonics-using-compute-shader.md rel="noopener noreferrer" target=_blank>编辑</a></div></header><figure class=entry-cover><img loading=eager src=https://zznewclear13.github.io/posts/images/SphericalHarmonics.jpg alt="Spherical Harmonics Cover"><p>Spherical Harmonics Result</p></figure><div class=toc><details open><summary accesskey=c title="(Alt + C)"><div class=details>使用Compute Shader计算球谐全局光照</div></summary><div class=inner><ul><li><a href=#%e4%b8%ba%e4%bb%80%e4%b9%88%e8%a6%81%e7%94%a8%e7%90%83%e8%b0%90%e5%87%bd%e6%95%b0%e6%9d%a5%e8%ae%a1%e7%ae%97%e5%85%a8%e5%b1%80%e5%85%89%e7%85%a7 aria-label=为什么要用球谐函数来计算全局光照>为什么要用球谐函数来计算全局光照</a></li><li><a href=#%e5%a6%82%e4%bd%95%e4%bd%bf%e7%94%a8%e7%90%83%e8%b0%90%e5%87%bd%e6%95%b0%e9%87%8d%e6%96%b0%e6%9e%84%e5%bb%ba%e5%85%89%e7%85%a7%e4%bf%a1%e6%81%af aria-label=如何使用球谐函数重新构建光照信息>如何使用球谐函数重新构建光照信息</a></li><li><a href=#%e4%bd%bf%e7%94%a8%e7%90%83%e8%b0%90%e5%87%bd%e6%95%b0%e8%ae%a1%e7%ae%97%e5%85%a8%e5%b1%80%e5%85%89%e7%85%a7%e7%9a%84%e6%bc%ab%e5%8f%8d%e5%b0%84%e9%83%a8%e5%88%86 aria-label=使用球谐函数计算全局光照的漫反射部分>使用球谐函数计算全局光照的漫反射部分</a><ul><li><a href=#sphericalharmonicscomputeshadercompute aria-label=SphericalHarmonicsComputeShader.compute>SphericalHarmonicsComputeShader.compute</a></li><li><a href=#calculateharmonicscs aria-label=CalculateHarmonics.cs>CalculateHarmonics.cs</a></li><li><a href=#sphericalharmonicsshader aria-label=SphericalHarmonics.shader>SphericalHarmonics.shader</a></li></ul></li></ul></div></details></div><div class=post-content><h2 id=为什么要用球谐函数来计算全局光照>为什么要用球谐函数来计算全局光照<a hidden class=anchor aria-hidden=true href=#为什么要用球谐函数来计算全局光照>#</a></h2><p>在物体的渲染中，除了计算直接光照的BRDF之外，也要计算间接光照对物体的影响。在引擎中获取间接光照信息的方法通常是在场景中布置一个反射探针，离线渲染一个360度的场景贴图。这样在计算间接光照的高光部分的时候，可以使用视线在物体上的反射方向<code>reflect(-viewDirection, normal)</code>，对渲染好的贴图进行采样，再进行brdf的计算，因此这张贴图也会被称作是specular map；然而在计算间接光照的漫反射部分时，因为目标点会受到来自各个方向上的光线带来的漫反射，不能再简单的使用视线的反射来采样这张帖图。这时有两种解决办法，一种是采样这张贴图的mipmap，在一定程度上模糊的mipmap可以认为是综合了各个方向的光照的信息，另一种则是Ravi Ramamoorthi和Pat Hanrahan2001年在<a href=https://cseweb.ucsd.edu/~ravir/papers/envmap/envmap.pdf>An Efficient Representation for Irradiance Environment Maps</a>中提出的，通过球谐函数重新构建低频光照信息的方式，将其作为简介光漫反射部分的贴图。</p><h2 id=如何使用球谐函数重新构建光照信息>如何使用球谐函数重新构建光照信息<a hidden class=anchor aria-hidden=true href=#如何使用球谐函数重新构建光照信息>#</a></h2><p>在Ravi Ramamoorthi的论文中他给出了球谐参数的计算公式和重构光照信息的公式：
 $$
 \tag*{球谐参数} L_{lm} = \int_{\theta = 0}^\pi\int_{\theta = 0}^{2\pi}L(\theta)Y_{lm}(\theta, \phi)sin\theta d\theta d\phi
 $$
@@ -11,581 +12,581 @@ $$
 $$
 其中c1 = 0.429043, c2 = 0.511664, c3 = 0.743125, c4 = 0.886227, c5 = 0.247708
 $$</p><p>根据第一条式子，有两种采样的方法：一种是使用蒙特卡洛方法，以\(Y_{lm}(\theta, \phi)sin\theta\)作为权重，随机取球面上均匀分布的方向采样高光贴图；另一种是以\(Y_{lm}(\theta, \phi)sin\theta \)乘当前像素对应的立体角作为权重，采样高光贴图的所有像素。在这篇文章中我参考了Accardi Piero的<a href=https://github.com/pieroaccardi/Unity_SphericalHarmonics_Tools>Unity_SphericalHarmonics_Tools</a>中的用Computes Shader采样所有像素的方法来计算球谐参数的方法，出于一些不知名的原因，计算权重的时候去掉\(sin\theta\)这一项反而能得到正确的结果，这里还希望有人能够指正一下。</p><h2 id=使用球谐函数计算全局光照的漫反射部分>使用球谐函数计算全局光照的漫反射部分<a hidden class=anchor aria-hidden=true href=#使用球谐函数计算全局光照的漫反射部分>#</a></h2><p>首先在Unity中创建<code>CalculateSphericalHarmonics.cs</code>, <code>SphericalHarmonicsComputeShader.compute</code>, 和<code>SphericalHarmonics.shader</code>，分别用来执行Compute Shader，计算球谐参数和使用球谐参数重构光照。
-我们这里使用<a href=https://www.pauldebevec.com/Probes/grace_probe.hdr>grace</a>作为我们的环境贴图，大概长这个样子。</p><p><img loading=lazy src=../images/grace_probe.png#center alt="grace probe"></p><h3 id=sphericalharmonicscomputeshadercompute>SphericalHarmonicsComputeShader.compute<a hidden class=anchor aria-hidden=true href=#sphericalharmonicscomputeshadercompute>#</a></h3><p>在Compute Shader中我们需要做以下的操作：获取像素的位置；根据像素的位置，获取该像素的立体角和在球面上的方向，并采样球面获得像素的颜色；对每个像素计算出其方向对应的球谐基\(Y_{lm}\)；累积所有像素的立体角、颜色和球谐基的乘积，得到\(4\pi\)倍的球谐参数。</p><p>首先是获取像素的位置，立体角，方向和采样（Compute Shader中加不了中文注释，就只能将就了）：</p><pre><code class=language-HLSL data-lang=HLSL>#pragma kernel CalculateSHMain
-
-TextureCube _CubeMapTexture;
-SamplerState sampler_LinearClamp;
-//_TextureSize and _DispatchCount are float3 but used as uint3
-float3 _TextureSize;
-float3 _DispatchCount;
-
-//Check if we are sampling inside texture
-bool CheckInRange(uint3 texturesize, uint3 dispatchThreadID)
-{
-	return !any(dispatchThreadID &gt;= texturesize);
-}
-
-//Calculate direction from dispatchThreadID
-float3 GetDirectionFromIndex(uint3 textureSize, uint3 dispatchThreadID)
-{
-    float2 uv = (dispatchThreadID.xy + 0.5) * rcp(textureSize.xy);
-    float u = uv.x;
-    float v = uv.y;
-    float3 dir = float3(0, 0, 0);
-    switch (dispatchThreadID.z)
-    {
-        case 0: //+X
-            dir.x = 1;
-            dir.y = v * -2.0f + 1.0f;
-            dir.z = u * -2.0f + 1.0f;
-            break;
-
-        case 1: //-X
-            dir.x = -1;
-            dir.y = v * -2.0f + 1.0f;
-            dir.z = u * 2.0f - 1.0f;
-            break;
-
-        case 2: //+Y
-            dir.x = u * 2.0f - 1.0f;
-            dir.y = 1.0f;
-            dir.z = v * 2.0f - 1.0f;
-            break;
-
-        case 3: //-Y
-            dir.x = u * 2.0f - 1.0f;
-            dir.y = -1.0f;
-            dir.z = v * -2.0f + 1.0f;
-            break;
-
-        case 4: //+Z
-            dir.x = u * 2.0f - 1.0f;
-            dir.y = v * -2.0f + 1.0f;
-            dir.z = 1;
-            break;
-
-        case 5: //-Z
-            dir.x = u * -2.0f + 1.0f;
-            dir.y = v * -2.0f + 1.0f;
-            dir.z = -1;
-            break;
-        }
-
-    return normalize(dir);
-}
-
-float AreaElement(float x, float y)
-{
-    return atan2(x * y, sqrt(x * x + y * y + 1));
-}
-
-//Calculate solid angle
-float GetWeightFromIndex(uint3 textureSize, uint3 dispatchThreadID)
-{
-    float2 invTextureSize = rcp(textureSize.xy);
-    float2 uv = (dispatchThreadID.xy + 0.5) * invTextureSize;
-    uv = uv * 2 - 1;
-    float x0 = uv.x - invTextureSize.x;
-    float y0 = uv.y - invTextureSize.y;
-    float x1 = uv.x + invTextureSize.x;
-    float y1 = uv.y + invTextureSize.y;
-
-    return AreaElement(x0, y0) - AreaElement(x0, y1) - AreaElement(x1, y0) + AreaElement(x1, y1);
-}
-
-//Texture format is RGBA SFloat, so we do not need to decode sampleHDR
-float3 SampleCubeMap(TextureCube cubTex, float3 sampleDir)
-{
-    float4 sampleHDR = cubTex.SampleLevel(sampler_LinearClamp, sampleDir, 0);
-    return sampleHDR.rgb;
-}
-
-[numthreads(8, 8, 6)]
-void CalculateSHMain(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-	uint indexGroup = groupID.z * _DispatchCount.x * _DispatchCount.y + groupID.y * _DispatchCount.x + groupID.x;
-	bool inRange = CheckInRange(_TextureSize, dispatchThreadID);
-	if (inRange)
-	{
-		float3 direction = GetDirectionFromIndex(_TextureSize, dispatchThreadID);
-		float weight = GetWeightFromIndex(_TextureSize, dispatchThreadID);
-        //I leave out sin(theta) term here
-		float3 sampleColor = SampleCubeMap(_CubeMapTexture, direction).rgb * weight;// * sqrt(1 - direction.z * direction.z);
-	}
-}
-</code></pre><p>按照之前的公式计算球谐基：</p><pre><code class=language-HLSL data-lang=HLSL>struct SHBasis
-{
-    float y00;
-    float y1p1;
-    float y10;
-    float y1n1;
-    float y2p1;
-    float y2n1;
-    float y2n2;
-    float y20;
-    float y2p2;
-};
-
-SHBasis Evaluate(float3 normal)
-{
-    SHBasis shBasis = (SHBasis)0;
-    shBasis.y00 = 0.2820947917f;
-    shBasis.y1p1 = 0.4886025119f * normal.y;
-    shBasis.y10 = 0.4886025119f * normal.z;
-    shBasis.y1n1 = 0.4886025119f * normal.x;
-    shBasis.y2p1 = 1.0925484306f * normal.x * normal.y;
-    shBasis.y2n1 = 1.0925484306f * normal.y * normal.z;
-    shBasis.y2n2= 0.3153915652f * (3 * normal.z * normal.z - 1.0f);
-    shBasis.y20 = 1.0925484306f * normal.x * normal.z;
-    shBasis.y2p2 = 0.5462742153f * (normal.x * normal.x - normal.y * normal.y);
-    return shBasis;
-}
-</code></pre><p>由于Compute Shader的groupshared memory有大小限制，这里我们传入一个<code>_SHPackIndex</code>，分三次计算球谐参数，每次计算三个float3：</p><pre><code class=language-HLSL data-lang=HLSL>//Pack 3 coeffs in one struct
-struct CoeffsPack3
-{
-    float3 coeff0;
-    float3 coeff1;
-    float3 coeff2;
-};
-
-float _SHPackIndex;
-groupshared CoeffsPack3 coeffs[8 * 8 * 6];
-
-[numthreads(8, 8, 6)]
-void CalculateSHMain(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-	uint indexGroup = groupID.z * _DispatchCount.x * _DispatchCount.y + groupID.y * _DispatchCount.x + groupID.x;
-	bool inRange = CheckInRange(_TextureSize, dispatchThreadID);
-	if (inRange)
-	{
-		float3 direction = GetDirectionFromIndex(_TextureSize, dispatchThreadID);
-		float weight = GetWeightFromIndex(_TextureSize, dispatchThreadID);
-        //I leave out sin(theta) term here
-		float3 sampleColor = SampleCubeMap(_CubeMapTexture, direction).rgb * weight;// * sqrt(1 - direction.z * direction.z);
-        
-        SHBasis shBasis = Evaluate(direction);
-        CoeffsPack3 tempCoeffs = (CoeffsPack3)0;
-
-        switch ((uint)_SHPackIndex)
-        {
-            case 0:
-                tempCoeffs.coeff0 = shBasis.y00 * sampleColor;
-                tempCoeffs.coeff1 = shBasis.y1p1 * sampleColor;
-                tempCoeffs.coeff2 = shBasis.y10 * sampleColor;
-                break;
-            case 1:
-                tempCoeffs.coeff0 = shBasis.y1n1 * sampleColor;
-                tempCoeffs.coeff1 = shBasis.y2p1 * sampleColor;
-                tempCoeffs.coeff2 = shBasis.y2n1 * sampleColor;
-                break;
-            case 2:
-                tempCoeffs.coeff0 = shBasis.y2n2 * sampleColor;
-                tempCoeffs.coeff1 = shBasis.y20 * sampleColor;
-                tempCoeffs.coeff2 = shBasis.y2p2 * sampleColor;
-                break;
-            default:
-                break;
-        }
-
-        coeffs[groupIndex] = tempCoeffs;
-    }
-}
-</code></pre><p>最后是对<code>groupshared CoeffsPack3 coeffs[8 * 8 * 6]</code>求和，在GPU Gems 3中介绍了一种多线程的求和算法<a href=https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda>Parallel Prefix Sum (Scan) with CUDA</a>，这样就能使用GPU来对每一个Thread Group求和并输出到RWStructuredBuffer中了，最后再在CPU中求所有Thread Group的和：</p><pre><code class=language-HLSL data-lang=HLSL>RWStructuredBuffer&lt;CoeffsPack3&gt; _GroupCoefficients;
-
-CoeffsPack3 CoeffsAdd(CoeffsPack3 coeffsA, CoeffsPack3 coeffsB)
-{
-    CoeffsPack3 tempCoeffs = (CoeffsPack3)0;
-    tempCoeffs.coeff0 = coeffsA.coeff0 + coeffsB.coeff0;
-    tempCoeffs.coeff1 = coeffsA.coeff1 + coeffsB.coeff1;
-    tempCoeffs.coeff2 = coeffsA.coeff2 + coeffsB.coeff2;
-    return tempCoeffs;
-}
-
-void SumUp(uint groupIndex, uint indexGroup)
-{
-    GroupMemoryBarrierWithGroupSync();
-
-    uint faceIndex = groupIndex % 64;
-
-    if (faceIndex &lt; 32)
-        coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 32]);
-
-    GroupMemoryBarrierWithGroupSync();
-
-    if (faceIndex &lt; 16)
-        coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 16]);
-
-    GroupMemoryBarrierWithGroupSync();
-
-    if (faceIndex &lt; 8)
-        coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 8]);
-
-    GroupMemoryBarrierWithGroupSync();
-
-    if (faceIndex &lt; 4)
-        coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 4]);
-
-    GroupMemoryBarrierWithGroupSync();
-
-    if (faceIndex &lt; 2)
-        coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 2]);
-
-    GroupMemoryBarrierWithGroupSync();
-
-    if (faceIndex &lt; 1)
-        coeffs[groupIndex] = CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex + 1]);
-
-    GroupMemoryBarrierWithGroupSync();
-
-    if (groupIndex == 0)
-    {
-        CoeffsPack3 output = coeffs[0];
-        output = CoeffsAdd(output, coeffs[64]);
-        output = CoeffsAdd(output, coeffs[128]);
-        output = CoeffsAdd(output, coeffs[192]);
-        output = CoeffsAdd(output, coeffs[256]);
-        output = CoeffsAdd(output, coeffs[320]);
-
-        _GroupCoefficients[indexGroup] = output;
-    }
-}
-
-[numthreads(8, 8, 6)]
-void CalculateSHMain(uint3 groupID : SV_GroupID, uint groupIndex : SV_GroupIndex, uint3 dispatchThreadID : SV_DispatchThreadID)
-{
-	uint indexGroup = groupID.z * _DispatchCount.x * _DispatchCount.y + groupID.y * _DispatchCount.x + groupID.x;
-    bool inRange = CheckInRange(_TextureSize, dispatchThreadID);
-	if (inRange)
-	{
-		float3 direction = GetDirectionFromIndex(_TextureSize, dispatchThreadID);
-		float weight = GetWeightFromIndex(_TextureSize, dispatchThreadID);
-        //I leave out sin(theta) term here
-		float3 sampleColor = SampleCubeMap(_CubeMapTexture, direction).rgb * weight;// * sqrt(1 - direction.z * direction.z);
-        
-        SHBasis shBasis = Evaluate(direction);
-        CoeffsPack3 tempCoeffs = (CoeffsPack3)0;
-
-        switch ((uint)_SHPackIndex)
-        {
-            case 0:
-                tempCoeffs.coeff0 = shBasis.y00 * sampleColor;
-                tempCoeffs.coeff1 = shBasis.y1p1 * sampleColor;
-                tempCoeffs.coeff2 = shBasis.y10 * sampleColor;
-                break;
-            case 1:
-                tempCoeffs.coeff0 = shBasis.y1n1 * sampleColor;
-                tempCoeffs.coeff1 = shBasis.y2p1 * sampleColor;
-                tempCoeffs.coeff2 = shBasis.y2n1 * sampleColor;
-                break;
-            case 2:
-                tempCoeffs.coeff0 = shBasis.y2n2 * sampleColor;
-                tempCoeffs.coeff1 = shBasis.y20 * sampleColor;
-                tempCoeffs.coeff2 = shBasis.y2p2 * sampleColor;
-                break;
-            default:
-                break;
-        }
-
-        coeffs[groupIndex] = tempCoeffs;
-    }
-
-    SumUp(groupIndex, indexGroup);
-}
-</code></pre><p>这样我们就写好了Compute Shader中所有的内容了，现在只需要把所有需要的参数传入Compute Shader就可以了。</p><h3 id=calculateharmonicscs>CalculateHarmonics.cs<a hidden class=anchor aria-hidden=true href=#calculateharmonicscs>#</a></h3><p>C#脚本中就没什么特别的操作了，创建Compute Buffer，传递到Compute Shader中，执行Compute Shader就能得到包含了每一个Thread Group的球谐参数的和的一个长度为(8 * 8 * 6)，每个参数包含3个float3的数组，对这个数组求和之后再除以\(4\pi\)就能得到最终的球谐参数的三项了。执行三个循环，就能获得全部的球谐参数，最后再传递给相应的shader:</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C# data-lang=C#><span style=color:#66d9ef>using</span> System.Collections;
-<span style=color:#66d9ef>using</span> System.Collections.Generic;
-<span style=color:#66d9ef>using</span> System;
-<span style=color:#66d9ef>using</span> UnityEngine;
-<span style=color:#66d9ef>using</span> UnityEditor;
-<span style=color:#66d9ef>using</span> Unity.Mathematics;
-
-<span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CalculateSphericalHarmonics</span> : EditorWindow, IDisposable
-{
-    <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>CoeffsPack3</span>
-    {
-        <span style=color:#66d9ef>public</span> float3 coeff0;
-        <span style=color:#66d9ef>public</span> float3 coeff1;
-        <span style=color:#66d9ef>public</span> float3 coeff2;
-
-        <span style=color:#66d9ef>public</span> CoeffsPack3(<span style=color:#66d9ef>float</span> x)
-        {
-            coeff0 = <span style=color:#66d9ef>new</span> float3(x);
-            coeff1 = <span style=color:#66d9ef>new</span> float3(x);
-            coeff2 = <span style=color:#66d9ef>new</span> float3(x);
-        }
-    }
-
-    <span style=color:#66d9ef>private</span> CoeffsPack3 SumCoeffs(CoeffsPack3[] coeffsArray)
-    {
-        CoeffsPack3 tempCoeffs = <span style=color:#66d9ef>new</span> CoeffsPack3(<span style=color:#ae81ff>0</span>);
-        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i = <span style=color:#ae81ff>0</span>; i &lt; coeffsArray.Length; i++)
-        {
-            tempCoeffs.coeff0 += coeffsArray[i].coeff0;
-            tempCoeffs.coeff1 += coeffsArray[i].coeff1;
-            tempCoeffs.coeff2 += coeffsArray[i].coeff2;
-        }
-        <span style=color:#66d9ef>return</span> tempCoeffs;
-    }
-
-    <span style=color:#66d9ef>private</span> Cubemap cubeMap;
-    <span style=color:#66d9ef>private</span> ComputeShader sphericalHarmonicsComputeShader;
-
-    <span style=color:#66d9ef>private</span> ComputeBuffer pack3Buffer;
-    <span style=color:#66d9ef>private</span> ComputeBuffer coefficiencesBuffer;
-
-    <span style=color:#66d9ef>private</span> CoeffsPack3[] pack3Array;
-
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Coefficience</span> : ScriptableObject
-    {
-        <span style=color:#66d9ef>public</span> float3[] coefficiencesArray;
-    }
-    <span style=color:#66d9ef>private</span> Coefficience coefficience;
-
-    <span style=color:#66d9ef>private</span> MeshRenderer targetMesh;
-
-    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> OnEnable()
-    {
-        coefficience = CreateInstance&lt;Coefficience&gt;();
-    }
-<span style=color:#a6e22e>
-</span><span style=color:#a6e22e>    [MenuItem(&#34;zznewclear13/Calculate Spherical Harmonics&#34;)]</span>
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> CalculateSphericalHarmonics GetWindow()
-    {
-        CalculateSphericalHarmonics window = GetWindow&lt;CalculateSphericalHarmonics&gt;(<span style=color:#e6db74>&#34;Calculate Spherical Harmonics&#34;</span>);
-        <span style=color:#66d9ef>return</span> window;
-    }
-
-    Rect baseRect
-    {
-        <span style=color:#66d9ef>get</span> { <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> Rect(<span style=color:#ae81ff>20f</span>, <span style=color:#ae81ff>20f</span>, position.width - <span style=color:#ae81ff>40f</span>, position.height - <span style=color:#ae81ff>40f</span>); }
-    }
-
-    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> OnGUI()
-    {
-        <span style=color:#66d9ef>using</span> (<span style=color:#66d9ef>new</span> GUILayout.AreaScope(baseRect))
-        {
-            <span style=color:#66d9ef>if</span> (!EditorGUIUtility.wideMode)
-            {
-                EditorGUIUtility.wideMode = <span style=color:#66d9ef>true</span>;
-                EditorGUIUtility.labelWidth = EditorGUIUtility.currentViewWidth - <span style=color:#ae81ff>212</span>;
-            }
-
-            cubeMap = (Cubemap)EditorGUILayout.ObjectField(<span style=color:#e6db74>&#34;Cube Map&#34;</span>, cubeMap, <span style=color:#66d9ef>typeof</span>(Cubemap), <span style=color:#66d9ef>false</span>);
-            sphericalHarmonicsComputeShader = (ComputeShader)EditorGUILayout.ObjectField(<span style=color:#e6db74>&#34;Compute Shader&#34;</span>, sphericalHarmonicsComputeShader, <span style=color:#66d9ef>typeof</span>(ComputeShader), <span style=color:#66d9ef>false</span>);
-            targetMesh = (MeshRenderer)EditorGUILayout.ObjectField(<span style=color:#e6db74>&#34;Target Mesh&#34;</span>, targetMesh, <span style=color:#66d9ef>typeof</span>(MeshRenderer), <span style=color:#66d9ef>true</span>);
-
-            EditorGUILayout.Space();
-
-            <span style=color:#66d9ef>using</span> (<span style=color:#66d9ef>new</span> EditorGUI.DisabledGroupScope(!sphericalHarmonicsComputeShader))
-            {
-                <span style=color:#66d9ef>if</span> (GUILayout.Button(<span style=color:#e6db74>&#34;Calculate!&#34;</span>, GUILayout.Height(<span style=color:#ae81ff>30f</span>)))
-                {
-                    <span style=color:#66d9ef>if</span> (cubeMap == <span style=color:#66d9ef>null</span>)
-                    {
-                        cubeMap = <span style=color:#66d9ef>new</span> Cubemap(<span style=color:#ae81ff>256</span>, TextureFormat.RGBAFloat, <span style=color:#66d9ef>false</span>);
-                    }
-                    Calculate();
-                    SetBuffer();
-                }
-            }
-
-            EditorGUILayout.Space();
-
-            <span style=color:#66d9ef>using</span> (<span style=color:#66d9ef>new</span> EditorGUI.DisabledGroupScope(<span style=color:#66d9ef>true</span>))
-            {
-                <span style=color:#66d9ef>if</span>(coefficience != <span style=color:#66d9ef>null</span>)
-                {
-                    SerializedObject serializedObject = <span style=color:#66d9ef>new</span> SerializedObject(coefficience);
-                    SerializedProperty arrayProperty = serializedObject.FindProperty(<span style=color:#e6db74>&#34;coefficiencesArray&#34;</span>);
-                    EditorGUILayout.PropertyField(arrayProperty, <span style=color:#66d9ef>true</span>);
-                    serializedObject.ApplyModifiedProperties();
-                }
-            }
-        }
-    }
-
-
-    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> Calculate()
-    {
-        coefficience.coefficiencesArray = <span style=color:#66d9ef>new</span> float3[<span style=color:#ae81ff>9</span>];
-
-        <span style=color:#66d9ef>int</span> kernel = sphericalHarmonicsComputeShader.FindKernel(<span style=color:#e6db74>&#34;CalculateSHMain&#34;</span>);
-        sphericalHarmonicsComputeShader.GetKernelThreadGroupSizes(kernel, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> x, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> y, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> z);
-        Vector3Int dispatchCounts = <span style=color:#66d9ef>new</span> Vector3Int(Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)cubeMap.width / (<span style=color:#66d9ef>float</span>)x),
-                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)cubeMap.height / (<span style=color:#66d9ef>float</span>)y),
-                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)<span style=color:#ae81ff>6</span> / (<span style=color:#66d9ef>float</span>)z));
-
-        <span style=color:#66d9ef>if</span> (pack3Buffer != <span style=color:#66d9ef>null</span>)
-        {
-            pack3Buffer.Release();
-        }
-        pack3Buffer = <span style=color:#66d9ef>new</span> ComputeBuffer(dispatchCounts.x * dispatchCounts.y * dispatchCounts.z, <span style=color:#ae81ff>3</span> * <span style=color:#ae81ff>3</span> * <span style=color:#ae81ff>4</span>, ComputeBufferType.Structured);
-        pack3Array = <span style=color:#66d9ef>new</span> CoeffsPack3[dispatchCounts.x * dispatchCounts.y * dispatchCounts.z];
-        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i = <span style=color:#ae81ff>0</span>; i &lt; dispatchCounts.x * dispatchCounts.y * dispatchCounts.z; i++)
-        {
-            pack3Array[i] = <span style=color:#66d9ef>new</span> CoeffsPack3(<span style=color:#ae81ff>0</span>);
-        }
-        pack3Buffer.SetData(pack3Array);
-
-        <span style=color:#75715e>//用于确认传入的参数
-</span><span style=color:#75715e></span>        Debug.Log(<span style=color:#e6db74>&#34;_TextureSize: &#34;</span> + cubeMap.width + <span style=color:#e6db74>&#34;, &#34;</span> + cubeMap.height + <span style=color:#e6db74>&#34;, &#34;</span> + <span style=color:#ae81ff>6</span>);
-        Debug.Log(<span style=color:#e6db74>&#34;_ThreadGroups: &#34;</span> + x + <span style=color:#e6db74>&#34;, &#34;</span> + y + <span style=color:#e6db74>&#34;, &#34;</span> + z);
-        Debug.Log(<span style=color:#e6db74>&#34;_DispatchCounts: &#34;</span> + dispatchCounts.x + <span style=color:#e6db74>&#34;, &#34;</span> + dispatchCounts.y + <span style=color:#e6db74>&#34;, &#34;</span> + dispatchCounts.z);
-        Debug.Log(<span style=color:#e6db74>&#34;_GroupCounts: &#34;</span> + dispatchCounts.x * dispatchCounts.y * dispatchCounts.z);
-        Debug.Log(<span style=color:#e6db74>&#34;_GroupThreadCounts: &#34;</span> + x * y * z);
-        Debug.Log(<span style=color:#e6db74>&#34;_CubeMapTexture: &#34;</span> + cubeMap.name);
-        Debug.Log(<span style=color:#e6db74>&#34;---------------------------------&#34;</span>);
-
-        sphericalHarmonicsComputeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_CubeMapTexture&#34;</span>, cubeMap);
-        sphericalHarmonicsComputeShader.SetBuffer(kernel, <span style=color:#e6db74>&#34;_GroupCoefficients&#34;</span>, pack3Buffer);
-        sphericalHarmonicsComputeShader.SetVector(<span style=color:#e6db74>&#34;_DispatchCount&#34;</span>, (Vector3)dispatchCounts);
-        sphericalHarmonicsComputeShader.SetVector(<span style=color:#e6db74>&#34;_TextureSize&#34;</span>, <span style=color:#66d9ef>new</span> Vector3(cubeMap.width, cubeMap.height, <span style=color:#ae81ff>6</span>));
-
-        <span style=color:#66d9ef>float</span> inv4PI = <span style=color:#ae81ff>0.25f</span> / Mathf.PI;
-        <span style=color:#75715e>//分三次，每次计算三个球谐参数
-</span><span style=color:#75715e></span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> shPackIndex = <span style=color:#ae81ff>0</span>; shPackIndex &lt; <span style=color:#ae81ff>3</span>; shPackIndex++)
-        {
-            sphericalHarmonicsComputeShader.SetFloat(<span style=color:#e6db74>&#34;_SHPackIndex&#34;</span>, shPackIndex);
-            sphericalHarmonicsComputeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z);
-            Debug.Log(<span style=color:#e6db74>&#34;Dispatch with (&#34;</span> + dispatchCounts.x + <span style=color:#e6db74>&#34;, &#34;</span> + dispatchCounts.y + <span style=color:#e6db74>&#34;, &#34;</span> + dispatchCounts.z + <span style=color:#e6db74>&#34;).&#34;</span>);
-            pack3Buffer.GetData(pack3Array);
-            CoeffsPack3 tempCoeffs = SumCoeffs(pack3Array);
-
-            coefficience.coefficiencesArray[shPackIndex * <span style=color:#ae81ff>3</span> + <span style=color:#ae81ff>0</span>] = tempCoeffs.coeff0 * inv4PI;
-            coefficience.coefficiencesArray[shPackIndex * <span style=color:#ae81ff>3</span> + <span style=color:#ae81ff>1</span>] = tempCoeffs.coeff1 * inv4PI;
-            coefficience.coefficiencesArray[shPackIndex * <span style=color:#ae81ff>3</span> + <span style=color:#ae81ff>2</span>] = tempCoeffs.coeff2 * inv4PI;
-        }
-        pack3Buffer.Release();
-
-        <span style=color:#66d9ef>string</span> debugLog = <span style=color:#e6db74>&#34;&#34;</span>;
-        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i = <span style=color:#ae81ff>0</span>; i &lt; <span style=color:#ae81ff>9</span>; i++)
-        {
-            debugLog += coefficience.coefficiencesArray[i] + <span style=color:#e6db74>&#34;...&#34;</span>;
-        }
-    }
-
-    <span style=color:#75715e>//给对应的mesh renderer的材质传入buffer
-</span><span style=color:#75715e></span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> SetBuffer()
-    {
-        <span style=color:#66d9ef>if</span>(coefficiencesBuffer != <span style=color:#66d9ef>null</span>)
-        {
-            coefficiencesBuffer.Release();
-        }
-        coefficiencesBuffer = <span style=color:#66d9ef>new</span> ComputeBuffer(<span style=color:#ae81ff>9</span>, <span style=color:#ae81ff>3</span> * <span style=color:#ae81ff>4</span>, ComputeBufferType.Structured);
-        coefficiencesBuffer.SetData(coefficience.coefficiencesArray);
-        targetMesh.sharedMaterial.SetBuffer(<span style=color:#e6db74>&#34;_CoefficienceBuffer&#34;</span>, coefficiencesBuffer);
-    }
-
-    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> Dispose()
-    {
-        pack3Buffer.Release();
-        coefficiencesBuffer.Release();
-    }
-}
-</code></pre></div><h3 id=sphericalharmonicsshader>SphericalHarmonics.shader<a hidden class=anchor aria-hidden=true href=#sphericalharmonicsshader>#</a></h3><p>从传入的StructuredBuffer中获取球谐参数，计算辐照度，同时我还增加了一个选项，用于对比我计算出的球谐参数和实际的球谐参数：</p><pre><code class=language-HLSL data-lang=HLSL>Shader &quot;Unlit/SphericalHarmonicsShader&quot;
-{
-    Properties
-    {
-        [Toggle(USE_GRACE)]_Use_Grace (&quot;Use Grace&quot;, float) = 1
-    }
-
-    HLSLINCLUDE
-    #include &quot;Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl&quot;
-    #include &quot;Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl&quot;
-
-    #pragma multi_compile _ USE_GRACE
-
-#if USE_GRACE
-#define Coeffs grace
-#else
-#define Coeffs _CoefficienceBuffer
-#endif
-
-    StructuredBuffer&lt;float3&gt; _CoefficienceBuffer;
-
-    static float3 grace[] =
-    {
-        float3(0.7953949, 0.4405923, 0.5459412),
-        float3(0.3981450, 0.3526911, 0.6097158),
-        float3(-0.3424573, -0.1838151, -0.2715583),
-        float3(-0.2944621, -0.0560606, 0.0095193),
-        float3(-0.1123051, -0.0513088, -0.1232869),
-        float3(-0.2645007, -0.2257996, -0.4785847),
-        float3(-0.1569444, -0.0954703, -0.1485053),
-        float3(0.5646247, 0.2161586, 0.1402643),
-        float3(0.2137442, -0.0547578, -0.3061700)
-    };
-
-    struct Attributes
-    {
-        float4 positionOS   : POSITION;
-        float2 uv           : TEXCOORD0;
-        float3 normalOS     : NORMAL;
-    };
-
-    struct Varyings
-    {
-        float4 positionCS   : SV_POSITION;
-        float2 texcoord     : TEXCOORD0;
-        float3 normalWS     : TEXCOORD1;
-    };
-
-    float3 CalcIrradiance(float3 nor) { 
-        float c1 = 0.429043;
-        float c2 = 0.511664;
-        float c3 = 0.743125;
-        float c4 = 0.886227;
-        float c5 = 0.247708;
-        return (
-            c1 * Coeffs[8] * (nor.x * nor.x - nor.y * nor.y) +
-            c3 * Coeffs[6] * nor.z * nor.z +
-            c4 * Coeffs[0] -
-            c5 * Coeffs[6] +
-            2.0 * c1 * Coeffs[4] * nor.x * nor.y +
-            2.0 * c1 * Coeffs[7] * nor.x * nor.z +
-            2.0 * c1 * Coeffs[5] * nor.y * nor.z +
-            2.0 * c2 * Coeffs[3] * nor.x +
-            2.0 * c2 * Coeffs[1] * nor.y +
-            2.0 * c2 * Coeffs[2] * nor.z
-            );
-    }
-
-    Varyings Vert(Attributes input)
-    {
-        Varyings output = (Varyings)0;
-        VertexPositionInputs vertexInput = GetVertexPositionInputs(input.positionOS.xyz);
-        VertexNormalInputs normalInput = GetVertexNormalInputs(input.normalOS);
-        output.positionCS = vertexInput.positionCS;
-        output.texcoord = input.uv;
-        output.normalWS = normalInput.normalWS;
-        return output;
-    }
-
-    float4 Frag(Varyings input) : SV_TARGET
-    {
-        float3 shColor = CalcIrradiance(normalize(input.normalWS));
-        return float4(shColor, 1);
-    }
-
-    ENDHLSL
-
-    SubShader
-    {
-        Pass
-        {
-            Name &quot;Spherical Harmonics Pass&quot;
-            Tags{&quot;LightMode&quot; = &quot;UniversalForward&quot;}
-            Cull Back
-            ZTest LEqual
-            ZWrite On
-            HLSLPROGRAM
-            #pragma vertex Vert
-            #pragma fragment Frag
-            ENDHLSL
-        }
-    }
-}
-</code></pre><p>最后点击“Calculate!”就能看到我们重新构建的全局光照的漫反射部分的光照信息了，大概就是这个样子。</p><p><img loading=lazy src=../images/SphericalHarmonics.jpg#center alt="Spherical Harmonics"></p></div><footer class=post-footer><ul class=post-tags><li><a href=https://zznewclear13.github.io/tags/compute-shader/>Compute Shader</a></li><li><a href=https://zznewclear13.github.io/tags/spherical-harmonics/>Spherical Harmonics</a></li></ul><nav class=paginav><a class=prev href=https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/><span class=title>« Prev</span><br><span>使用Compute Shader计算有向距离场</span></a>
-<a class=next href=https://zznewclear13.github.io/posts/get-started-with-unity-compute-shader/><span class=title>Next »</span><br><span>Unity Compute Shader备忘录</span></a></nav></footer><div id=comments></div><script>let currentHugoTheme=window.localStorage.getItem("pref-theme");function loadComment(){const b=document.getElementById('comments');let c=currentHugoTheme=='dark'?'photon-dark':'github-light',a=document.createElement('script');a.src='https://utteranc.es/client.js',a.setAttribute('repo','zznewclear13/zznewclear13.github.io'),a.setAttribute('issue-term','pathname'),a.setAttribute('label','utterances'),a.setAttribute('theme',c),a.setAttribute('crossorigin','anonymous'),a.setAttribute('async',''),b.innerHTML='',b.appendChild(a)}loadComment(),document.getElementById('theme-toggle').onclick=async()=>{await new Promise(a=>setTimeout(a,200));let a=window.localStorage.getItem('pref-theme');a!=currentHugoTheme&&(currentHugoTheme=a,loadComment())}</script></article></main><footer class=footer><span>&copy; 2024 <a href=https://zznewclear13.github.io/>ZZNEWCLEAR13</a></span>
+我们这里使用<a href=https://www.pauldebevec.com/Probes/grace_probe.hdr>grace</a>作为我们的环境贴图，大概长这个样子。</p><p><img loading=lazy src=../images/grace_probe.png#center alt="grace probe"></p><h3 id=sphericalharmonicscomputeshadercompute>SphericalHarmonicsComputeShader.compute<a hidden class=anchor aria-hidden=true href=#sphericalharmonicscomputeshadercompute>#</a></h3><p>在Compute Shader中我们需要做以下的操作：获取像素的位置；根据像素的位置，获取该像素的立体角和在球面上的方向，并采样球面获得像素的颜色；对每个像素计算出其方向对应的球谐基\(Y_{lm}\)；累积所有像素的立体角、颜色和球谐基的乘积，得到\(4\pi\)倍的球谐参数。</p><p>首先是获取像素的位置，立体角，方向和采样（Compute Shader中加不了中文注释，就只能将就了）：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-HLSL data-lang=HLSL><span style=display:flex><span><span style=color:#75715e>#pragma kernel CalculateSHMain</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>TextureCube</span> _CubeMapTexture;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>SamplerState</span> sampler_LinearClamp;
+</span></span><span style=display:flex><span><span style=color:#75715e>//_TextureSize and _DispatchCount are float3 but used as uint3</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float3</span> _TextureSize;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float3</span> _DispatchCount;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//Check if we are sampling inside texture</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>bool</span> CheckInRange(<span style=color:#66d9ef>uint3</span> texturesize, <span style=color:#66d9ef>uint3</span> dispatchThreadID)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>return</span> <span style=color:#f92672>!</span>any(dispatchThreadID <span style=color:#f92672>&gt;=</span> texturesize);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//Calculate direction from dispatchThreadID</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float3</span> GetDirectionFromIndex(<span style=color:#66d9ef>uint3</span> textureSize, <span style=color:#66d9ef>uint3</span> dispatchThreadID)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float2</span> uv <span style=color:#f92672>=</span> (dispatchThreadID.xy <span style=color:#f92672>+</span> <span style=color:#ae81ff>0.5</span>) <span style=color:#f92672>*</span> rcp(textureSize.xy);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> u <span style=color:#f92672>=</span> uv.x;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> v <span style=color:#f92672>=</span> uv.y;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float3</span> dir <span style=color:#f92672>=</span> <span style=color:#66d9ef>float3</span>(<span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>switch</span> (dispatchThreadID.z)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>:</span> <span style=color:#75715e>//+X</span>
+</span></span><span style=display:flex><span>            dir.x <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            dir.y <span style=color:#f92672>=</span> v <span style=color:#f92672>*</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.z <span style=color:#f92672>=</span> u <span style=color:#f92672>*</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>1</span><span style=color:#f92672>:</span> <span style=color:#75715e>//-X</span>
+</span></span><span style=display:flex><span>            dir.x <span style=color:#f92672>=</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            dir.y <span style=color:#f92672>=</span> v <span style=color:#f92672>*</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.z <span style=color:#f92672>=</span> u <span style=color:#f92672>*</span> <span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>2</span><span style=color:#f92672>:</span> <span style=color:#75715e>//+Y</span>
+</span></span><span style=display:flex><span>            dir.x <span style=color:#f92672>=</span> u <span style=color:#f92672>*</span> <span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.y <span style=color:#f92672>=</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.z <span style=color:#f92672>=</span> v <span style=color:#f92672>*</span> <span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>3</span><span style=color:#f92672>:</span> <span style=color:#75715e>//-Y</span>
+</span></span><span style=display:flex><span>            dir.x <span style=color:#f92672>=</span> u <span style=color:#f92672>*</span> <span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.y <span style=color:#f92672>=</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.z <span style=color:#f92672>=</span> v <span style=color:#f92672>*</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>4</span><span style=color:#f92672>:</span> <span style=color:#75715e>//+Z</span>
+</span></span><span style=display:flex><span>            dir.x <span style=color:#f92672>=</span> u <span style=color:#f92672>*</span> <span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.y <span style=color:#f92672>=</span> v <span style=color:#f92672>*</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.z <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>5</span><span style=color:#f92672>:</span> <span style=color:#75715e>//-Z</span>
+</span></span><span style=display:flex><span>            dir.x <span style=color:#f92672>=</span> u <span style=color:#f92672>*</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.y <span style=color:#f92672>=</span> v <span style=color:#f92672>*</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>2.0f</span> <span style=color:#f92672>+</span> <span style=color:#ae81ff>1.0f</span>;
+</span></span><span style=display:flex><span>            dir.z <span style=color:#f92672>=</span> <span style=color:#f92672>-</span><span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> normalize(dir);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float</span> AreaElement(<span style=color:#66d9ef>float</span> x, <span style=color:#66d9ef>float</span> y)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> atan2(x <span style=color:#f92672>*</span> y, sqrt(x <span style=color:#f92672>*</span> x <span style=color:#f92672>+</span> y <span style=color:#f92672>*</span> y <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>));
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//Calculate solid angle</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float</span> GetWeightFromIndex(<span style=color:#66d9ef>uint3</span> textureSize, <span style=color:#66d9ef>uint3</span> dispatchThreadID)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float2</span> invTextureSize <span style=color:#f92672>=</span> rcp(textureSize.xy);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float2</span> uv <span style=color:#f92672>=</span> (dispatchThreadID.xy <span style=color:#f92672>+</span> <span style=color:#ae81ff>0.5</span>) <span style=color:#f92672>*</span> invTextureSize;
+</span></span><span style=display:flex><span>    uv <span style=color:#f92672>=</span> uv <span style=color:#f92672>*</span> <span style=color:#ae81ff>2</span> <span style=color:#f92672>-</span> <span style=color:#ae81ff>1</span>;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> x0 <span style=color:#f92672>=</span> uv.x <span style=color:#f92672>-</span> invTextureSize.x;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y0 <span style=color:#f92672>=</span> uv.y <span style=color:#f92672>-</span> invTextureSize.y;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> x1 <span style=color:#f92672>=</span> uv.x <span style=color:#f92672>+</span> invTextureSize.x;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y1 <span style=color:#f92672>=</span> uv.y <span style=color:#f92672>+</span> invTextureSize.y;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> AreaElement(x0, y0) <span style=color:#f92672>-</span> AreaElement(x0, y1) <span style=color:#f92672>-</span> AreaElement(x1, y0) <span style=color:#f92672>+</span> AreaElement(x1, y1);
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>//Texture format is RGBA SFloat, so we do not need to decode sampleHDR</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float3</span> SampleCubeMap(<span style=color:#66d9ef>TextureCube</span> cubTex, <span style=color:#66d9ef>float3</span> sampleDir)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float4</span> sampleHDR <span style=color:#f92672>=</span> cubTex.SampleLevel(sampler_LinearClamp, sampleDir, <span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> sampleHDR.rgb;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>[<span style=color:#a6e22e>numthreads</span>(<span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>6</span>)]
+</span></span><span style=display:flex><span><span style=color:#66d9ef>void</span> CalculateSHMain(<span style=color:#66d9ef>uint3</span> groupID <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_GroupID</span>, <span style=color:#66d9ef>uint</span> groupIndex <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_GroupIndex</span>, <span style=color:#66d9ef>uint3</span> dispatchThreadID <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_DispatchThreadID</span>)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>uint</span> indexGroup <span style=color:#f92672>=</span> groupID.z <span style=color:#f92672>*</span> _DispatchCount.x <span style=color:#f92672>*</span> _DispatchCount.y <span style=color:#f92672>+</span> groupID.y <span style=color:#f92672>*</span> _DispatchCount.x <span style=color:#f92672>+</span> groupID.x;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>bool</span> inRange <span style=color:#f92672>=</span> CheckInRange(_TextureSize, dispatchThreadID);
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (inRange)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float3</span> direction <span style=color:#f92672>=</span> GetDirectionFromIndex(_TextureSize, dispatchThreadID);
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float</span> weight <span style=color:#f92672>=</span> GetWeightFromIndex(_TextureSize, dispatchThreadID);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//I leave out sin(theta) term here</span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float3</span> sampleColor <span style=color:#f92672>=</span> SampleCubeMap(_CubeMapTexture, direction).rgb <span style=color:#f92672>*</span> weight;<span style=color:#75715e>// * sqrt(1 - direction.z * direction.z);</span>
+</span></span><span style=display:flex><span>	}
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>按照之前的公式计算球谐基：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-HLSL data-lang=HLSL><span style=display:flex><span><span style=color:#66d9ef>struct</span> SHBasis
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y00;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y1p1;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y10;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y1n1;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y2p1;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y2n1;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y2n2;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y20;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float</span> y2p2;
+</span></span><span style=display:flex><span>};
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>SHBasis Evaluate(<span style=color:#66d9ef>float3</span> normal)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    SHBasis shBasis <span style=color:#f92672>=</span> (SHBasis)<span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>    shBasis.y00 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.2820947917f</span>;
+</span></span><span style=display:flex><span>    shBasis.y1p1 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.4886025119f</span> <span style=color:#f92672>*</span> normal.y;
+</span></span><span style=display:flex><span>    shBasis.y10 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.4886025119f</span> <span style=color:#f92672>*</span> normal.z;
+</span></span><span style=display:flex><span>    shBasis.y1n1 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.4886025119f</span> <span style=color:#f92672>*</span> normal.x;
+</span></span><span style=display:flex><span>    shBasis.y2p1 <span style=color:#f92672>=</span> <span style=color:#ae81ff>1.0925484306f</span> <span style=color:#f92672>*</span> normal.x <span style=color:#f92672>*</span> normal.y;
+</span></span><span style=display:flex><span>    shBasis.y2n1 <span style=color:#f92672>=</span> <span style=color:#ae81ff>1.0925484306f</span> <span style=color:#f92672>*</span> normal.y <span style=color:#f92672>*</span> normal.z;
+</span></span><span style=display:flex><span>    shBasis.y2n2<span style=color:#f92672>=</span> <span style=color:#ae81ff>0.3153915652f</span> <span style=color:#f92672>*</span> (<span style=color:#ae81ff>3</span> <span style=color:#f92672>*</span> normal.z <span style=color:#f92672>*</span> normal.z <span style=color:#f92672>-</span> <span style=color:#ae81ff>1.0f</span>);
+</span></span><span style=display:flex><span>    shBasis.y20 <span style=color:#f92672>=</span> <span style=color:#ae81ff>1.0925484306f</span> <span style=color:#f92672>*</span> normal.x <span style=color:#f92672>*</span> normal.z;
+</span></span><span style=display:flex><span>    shBasis.y2p2 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.5462742153f</span> <span style=color:#f92672>*</span> (normal.x <span style=color:#f92672>*</span> normal.x <span style=color:#f92672>-</span> normal.y <span style=color:#f92672>*</span> normal.y);
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> shBasis;
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>由于Compute Shader的groupshared memory有大小限制，这里我们传入一个<code>_SHPackIndex</code>，分三次计算球谐参数，每次计算三个float3：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-HLSL data-lang=HLSL><span style=display:flex><span><span style=color:#75715e>//Pack 3 coeffs in one struct</span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>struct</span> CoeffsPack3
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float3</span> coeff0;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float3</span> coeff1;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float3</span> coeff2;
+</span></span><span style=display:flex><span>};
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>float</span> _SHPackIndex;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>groupshared</span> CoeffsPack3 coeffs[<span style=color:#ae81ff>8</span> <span style=color:#f92672>*</span> <span style=color:#ae81ff>8</span> <span style=color:#f92672>*</span> <span style=color:#ae81ff>6</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>[<span style=color:#a6e22e>numthreads</span>(<span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>6</span>)]
+</span></span><span style=display:flex><span><span style=color:#66d9ef>void</span> CalculateSHMain(<span style=color:#66d9ef>uint3</span> groupID <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_GroupID</span>, <span style=color:#66d9ef>uint</span> groupIndex <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_GroupIndex</span>, <span style=color:#66d9ef>uint3</span> dispatchThreadID <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_DispatchThreadID</span>)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>uint</span> indexGroup <span style=color:#f92672>=</span> groupID.z <span style=color:#f92672>*</span> _DispatchCount.x <span style=color:#f92672>*</span> _DispatchCount.y <span style=color:#f92672>+</span> groupID.y <span style=color:#f92672>*</span> _DispatchCount.x <span style=color:#f92672>+</span> groupID.x;
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>bool</span> inRange <span style=color:#f92672>=</span> CheckInRange(_TextureSize, dispatchThreadID);
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (inRange)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float3</span> direction <span style=color:#f92672>=</span> GetDirectionFromIndex(_TextureSize, dispatchThreadID);
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float</span> weight <span style=color:#f92672>=</span> GetWeightFromIndex(_TextureSize, dispatchThreadID);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//I leave out sin(theta) term here</span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float3</span> sampleColor <span style=color:#f92672>=</span> SampleCubeMap(_CubeMapTexture, direction).rgb <span style=color:#f92672>*</span> weight;<span style=color:#75715e>// * sqrt(1 - direction.z * direction.z);</span>
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        SHBasis shBasis <span style=color:#f92672>=</span> Evaluate(direction);
+</span></span><span style=display:flex><span>        CoeffsPack3 tempCoeffs <span style=color:#f92672>=</span> (CoeffsPack3)<span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>switch</span> ((<span style=color:#66d9ef>uint</span>)_SHPackIndex)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>                tempCoeffs.coeff0 <span style=color:#f92672>=</span> shBasis.y00 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff1 <span style=color:#f92672>=</span> shBasis.y1p1 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff2 <span style=color:#f92672>=</span> shBasis.y10 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>1</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>                tempCoeffs.coeff0 <span style=color:#f92672>=</span> shBasis.y1n1 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff1 <span style=color:#f92672>=</span> shBasis.y2p1 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff2 <span style=color:#f92672>=</span> shBasis.y2n1 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>2</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>                tempCoeffs.coeff0 <span style=color:#f92672>=</span> shBasis.y2n2 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff1 <span style=color:#f92672>=</span> shBasis.y20 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff2 <span style=color:#f92672>=</span> shBasis.y2p2 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>default</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        coeffs[groupIndex] <span style=color:#f92672>=</span> tempCoeffs;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>最后是对<code>groupshared CoeffsPack3 coeffs[8 * 8 * 6]</code>求和，在GPU Gems 3中介绍了一种多线程的求和算法<a href=https://developer.nvidia.com/gpugems/gpugems3/part-vi-gpu-computing/chapter-39-parallel-prefix-sum-scan-cuda>Parallel Prefix Sum (Scan) with CUDA</a>，这样就能使用GPU来对每一个Thread Group求和并输出到RWStructuredBuffer中了，最后再在CPU中求所有Thread Group的和：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-HLSL data-lang=HLSL><span style=display:flex><span><span style=color:#66d9ef>RWStructuredBuffer</span><span style=color:#f92672>&lt;</span>CoeffsPack3<span style=color:#f92672>&gt;</span> _GroupCoefficients;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>CoeffsPack3 CoeffsAdd(CoeffsPack3 coeffsA, CoeffsPack3 coeffsB)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    CoeffsPack3 tempCoeffs <span style=color:#f92672>=</span> (CoeffsPack3)<span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>    tempCoeffs.coeff0 <span style=color:#f92672>=</span> coeffsA.coeff0 <span style=color:#f92672>+</span> coeffsB.coeff0;
+</span></span><span style=display:flex><span>    tempCoeffs.coeff1 <span style=color:#f92672>=</span> coeffsA.coeff1 <span style=color:#f92672>+</span> coeffsB.coeff1;
+</span></span><span style=display:flex><span>    tempCoeffs.coeff2 <span style=color:#f92672>=</span> coeffsA.coeff2 <span style=color:#f92672>+</span> coeffsB.coeff2;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>return</span> tempCoeffs;
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>void</span> SumUp(<span style=color:#66d9ef>uint</span> groupIndex, <span style=color:#66d9ef>uint</span> indexGroup)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    GroupMemoryBarrierWithGroupSync();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>uint</span> faceIndex <span style=color:#f92672>=</span> groupIndex <span style=color:#f92672>%</span> <span style=color:#ae81ff>64</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (faceIndex <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>32</span>)
+</span></span><span style=display:flex><span>        coeffs[groupIndex] <span style=color:#f92672>=</span> CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex <span style=color:#f92672>+</span> <span style=color:#ae81ff>32</span>]);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    GroupMemoryBarrierWithGroupSync();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (faceIndex <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>16</span>)
+</span></span><span style=display:flex><span>        coeffs[groupIndex] <span style=color:#f92672>=</span> CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex <span style=color:#f92672>+</span> <span style=color:#ae81ff>16</span>]);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    GroupMemoryBarrierWithGroupSync();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (faceIndex <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>8</span>)
+</span></span><span style=display:flex><span>        coeffs[groupIndex] <span style=color:#f92672>=</span> CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex <span style=color:#f92672>+</span> <span style=color:#ae81ff>8</span>]);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    GroupMemoryBarrierWithGroupSync();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (faceIndex <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>4</span>)
+</span></span><span style=display:flex><span>        coeffs[groupIndex] <span style=color:#f92672>=</span> CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex <span style=color:#f92672>+</span> <span style=color:#ae81ff>4</span>]);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    GroupMemoryBarrierWithGroupSync();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (faceIndex <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>2</span>)
+</span></span><span style=display:flex><span>        coeffs[groupIndex] <span style=color:#f92672>=</span> CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex <span style=color:#f92672>+</span> <span style=color:#ae81ff>2</span>]);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    GroupMemoryBarrierWithGroupSync();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (faceIndex <span style=color:#f92672>&lt;</span> <span style=color:#ae81ff>1</span>)
+</span></span><span style=display:flex><span>        coeffs[groupIndex] <span style=color:#f92672>=</span> CoeffsAdd(coeffs[groupIndex], coeffs[groupIndex <span style=color:#f92672>+</span> <span style=color:#ae81ff>1</span>]);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    GroupMemoryBarrierWithGroupSync();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>if</span> (groupIndex <span style=color:#f92672>==</span> <span style=color:#ae81ff>0</span>)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        CoeffsPack3 output <span style=color:#f92672>=</span> coeffs[<span style=color:#ae81ff>0</span>];
+</span></span><span style=display:flex><span>        output <span style=color:#f92672>=</span> CoeffsAdd(output, coeffs[<span style=color:#ae81ff>64</span>]);
+</span></span><span style=display:flex><span>        output <span style=color:#f92672>=</span> CoeffsAdd(output, coeffs[<span style=color:#ae81ff>128</span>]);
+</span></span><span style=display:flex><span>        output <span style=color:#f92672>=</span> CoeffsAdd(output, coeffs[<span style=color:#ae81ff>192</span>]);
+</span></span><span style=display:flex><span>        output <span style=color:#f92672>=</span> CoeffsAdd(output, coeffs[<span style=color:#ae81ff>256</span>]);
+</span></span><span style=display:flex><span>        output <span style=color:#f92672>=</span> CoeffsAdd(output, coeffs[<span style=color:#ae81ff>320</span>]);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        _GroupCoefficients[indexGroup] <span style=color:#f92672>=</span> output;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>[<span style=color:#a6e22e>numthreads</span>(<span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>8</span>, <span style=color:#ae81ff>6</span>)]
+</span></span><span style=display:flex><span><span style=color:#66d9ef>void</span> CalculateSHMain(<span style=color:#66d9ef>uint3</span> groupID <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_GroupID</span>, <span style=color:#66d9ef>uint</span> groupIndex <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_GroupIndex</span>, <span style=color:#66d9ef>uint3</span> dispatchThreadID <span style=color:#f92672>:</span> <span style=color:#a6e22e>SV_DispatchThreadID</span>)
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>uint</span> indexGroup <span style=color:#f92672>=</span> groupID.z <span style=color:#f92672>*</span> _DispatchCount.x <span style=color:#f92672>*</span> _DispatchCount.y <span style=color:#f92672>+</span> groupID.y <span style=color:#f92672>*</span> _DispatchCount.x <span style=color:#f92672>+</span> groupID.x;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>bool</span> inRange <span style=color:#f92672>=</span> CheckInRange(_TextureSize, dispatchThreadID);
+</span></span><span style=display:flex><span>	<span style=color:#66d9ef>if</span> (inRange)
+</span></span><span style=display:flex><span>	{
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float3</span> direction <span style=color:#f92672>=</span> GetDirectionFromIndex(_TextureSize, dispatchThreadID);
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float</span> weight <span style=color:#f92672>=</span> GetWeightFromIndex(_TextureSize, dispatchThreadID);
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//I leave out sin(theta) term here</span>
+</span></span><span style=display:flex><span>		<span style=color:#66d9ef>float3</span> sampleColor <span style=color:#f92672>=</span> SampleCubeMap(_CubeMapTexture, direction).rgb <span style=color:#f92672>*</span> weight;<span style=color:#75715e>// * sqrt(1 - direction.z * direction.z);</span>
+</span></span><span style=display:flex><span>        
+</span></span><span style=display:flex><span>        SHBasis shBasis <span style=color:#f92672>=</span> Evaluate(direction);
+</span></span><span style=display:flex><span>        CoeffsPack3 tempCoeffs <span style=color:#f92672>=</span> (CoeffsPack3)<span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>switch</span> ((<span style=color:#66d9ef>uint</span>)_SHPackIndex)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>0</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>                tempCoeffs.coeff0 <span style=color:#f92672>=</span> shBasis.y00 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff1 <span style=color:#f92672>=</span> shBasis.y1p1 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff2 <span style=color:#f92672>=</span> shBasis.y10 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>1</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>                tempCoeffs.coeff0 <span style=color:#f92672>=</span> shBasis.y1n1 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff1 <span style=color:#f92672>=</span> shBasis.y2p1 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff2 <span style=color:#f92672>=</span> shBasis.y2n1 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>case</span> <span style=color:#ae81ff>2</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>                tempCoeffs.coeff0 <span style=color:#f92672>=</span> shBasis.y2n2 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff1 <span style=color:#f92672>=</span> shBasis.y20 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                tempCoeffs.coeff2 <span style=color:#f92672>=</span> shBasis.y2p2 <span style=color:#f92672>*</span> sampleColor;
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>default</span><span style=color:#f92672>:</span>
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>break</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        coeffs[groupIndex] <span style=color:#f92672>=</span> tempCoeffs;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    SumUp(groupIndex, indexGroup);
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>这样我们就写好了Compute Shader中所有的内容了，现在只需要把所有需要的参数传入Compute Shader就可以了。</p><h3 id=calculateharmonicscs>CalculateHarmonics.cs<a hidden class=anchor aria-hidden=true href=#calculateharmonicscs>#</a></h3><p>C#脚本中就没什么特别的操作了，创建Compute Buffer，传递到Compute Shader中，执行Compute Shader就能得到包含了每一个Thread Group的球谐参数的和的一个长度为(8 * 8 * 6)，每个参数包含3个float3的数组，对这个数组求和之后再除以\(4\pi\)就能得到最终的球谐参数的三项了。执行三个循环，就能获得全部的球谐参数，最后再传递给相应的shader:</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-C# data-lang=C#><span style=display:flex><span><span style=color:#66d9ef>using</span> System.Collections;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>using</span> System.Collections.Generic;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>using</span> System;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>using</span> UnityEngine;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>using</span> UnityEditor;
+</span></span><span style=display:flex><span><span style=color:#66d9ef>using</span> Unity.Mathematics;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>CalculateSphericalHarmonics</span> : EditorWindow, IDisposable
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> <span style=color:#a6e22e>CoeffsPack3</span>
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>public</span> float3 coeff0;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>public</span> float3 coeff1;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>public</span> float3 coeff2;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>public</span> CoeffsPack3(<span style=color:#66d9ef>float</span> x)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            coeff0 = <span style=color:#66d9ef>new</span> float3(x);
+</span></span><span style=display:flex><span>            coeff1 = <span style=color:#66d9ef>new</span> float3(x);
+</span></span><span style=display:flex><span>            coeff2 = <span style=color:#66d9ef>new</span> float3(x);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> CoeffsPack3 SumCoeffs(CoeffsPack3[] coeffsArray)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        CoeffsPack3 tempCoeffs = <span style=color:#66d9ef>new</span> CoeffsPack3(<span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i = <span style=color:#ae81ff>0</span>; i &lt; coeffsArray.Length; i++)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            tempCoeffs.coeff0 += coeffsArray[i].coeff0;
+</span></span><span style=display:flex><span>            tempCoeffs.coeff1 += coeffsArray[i].coeff1;
+</span></span><span style=display:flex><span>            tempCoeffs.coeff2 += coeffsArray[i].coeff2;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> tempCoeffs;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> Cubemap cubeMap;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> ComputeShader sphericalHarmonicsComputeShader;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> ComputeBuffer pack3Buffer;
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> ComputeBuffer coefficiencesBuffer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> CoeffsPack3[] pack3Array;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>Coefficience</span> : ScriptableObject
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>public</span> float3[] coefficiencesArray;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> Coefficience coefficience;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> MeshRenderer targetMesh;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> OnEnable()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        coefficience = CreateInstance&lt;Coefficience&gt;();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span><span style=color:#a6e22e>
+</span></span></span><span style=display:flex><span><span style=color:#a6e22e>    [MenuItem(&#34;zznewclear13/Calculate Spherical Harmonics&#34;)]</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>static</span> CalculateSphericalHarmonics GetWindow()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        CalculateSphericalHarmonics window = GetWindow&lt;CalculateSphericalHarmonics&gt;(<span style=color:#e6db74>&#34;Calculate Spherical Harmonics&#34;</span>);
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> window;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    Rect baseRect
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>get</span> { <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>new</span> Rect(<span style=color:#ae81ff>20f</span>, <span style=color:#ae81ff>20f</span>, position.width - <span style=color:#ae81ff>40f</span>, position.height - <span style=color:#ae81ff>40f</span>); }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> OnGUI()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>using</span> (<span style=color:#66d9ef>new</span> GUILayout.AreaScope(baseRect))
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>if</span> (!EditorGUIUtility.wideMode)
+</span></span><span style=display:flex><span>            {
+</span></span><span style=display:flex><span>                EditorGUIUtility.wideMode = <span style=color:#66d9ef>true</span>;
+</span></span><span style=display:flex><span>                EditorGUIUtility.labelWidth = EditorGUIUtility.currentViewWidth - <span style=color:#ae81ff>212</span>;
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            cubeMap = (Cubemap)EditorGUILayout.ObjectField(<span style=color:#e6db74>&#34;Cube Map&#34;</span>, cubeMap, <span style=color:#66d9ef>typeof</span>(Cubemap), <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>            sphericalHarmonicsComputeShader = (ComputeShader)EditorGUILayout.ObjectField(<span style=color:#e6db74>&#34;Compute Shader&#34;</span>, sphericalHarmonicsComputeShader, <span style=color:#66d9ef>typeof</span>(ComputeShader), <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>            targetMesh = (MeshRenderer)EditorGUILayout.ObjectField(<span style=color:#e6db74>&#34;Target Mesh&#34;</span>, targetMesh, <span style=color:#66d9ef>typeof</span>(MeshRenderer), <span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            EditorGUILayout.Space();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>using</span> (<span style=color:#66d9ef>new</span> EditorGUI.DisabledGroupScope(!sphericalHarmonicsComputeShader))
+</span></span><span style=display:flex><span>            {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span> (GUILayout.Button(<span style=color:#e6db74>&#34;Calculate!&#34;</span>, GUILayout.Height(<span style=color:#ae81ff>30f</span>)))
+</span></span><span style=display:flex><span>                {
+</span></span><span style=display:flex><span>                    <span style=color:#66d9ef>if</span> (cubeMap == <span style=color:#66d9ef>null</span>)
+</span></span><span style=display:flex><span>                    {
+</span></span><span style=display:flex><span>                        cubeMap = <span style=color:#66d9ef>new</span> Cubemap(<span style=color:#ae81ff>256</span>, TextureFormat.RGBAFloat, <span style=color:#66d9ef>false</span>);
+</span></span><span style=display:flex><span>                    }
+</span></span><span style=display:flex><span>                    Calculate();
+</span></span><span style=display:flex><span>                    SetBuffer();
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            EditorGUILayout.Space();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            <span style=color:#66d9ef>using</span> (<span style=color:#66d9ef>new</span> EditorGUI.DisabledGroupScope(<span style=color:#66d9ef>true</span>))
+</span></span><span style=display:flex><span>            {
+</span></span><span style=display:flex><span>                <span style=color:#66d9ef>if</span>(coefficience != <span style=color:#66d9ef>null</span>)
+</span></span><span style=display:flex><span>                {
+</span></span><span style=display:flex><span>                    SerializedObject serializedObject = <span style=color:#66d9ef>new</span> SerializedObject(coefficience);
+</span></span><span style=display:flex><span>                    SerializedProperty arrayProperty = serializedObject.FindProperty(<span style=color:#e6db74>&#34;coefficiencesArray&#34;</span>);
+</span></span><span style=display:flex><span>                    EditorGUILayout.PropertyField(arrayProperty, <span style=color:#66d9ef>true</span>);
+</span></span><span style=display:flex><span>                    serializedObject.ApplyModifiedProperties();
+</span></span><span style=display:flex><span>                }
+</span></span><span style=display:flex><span>            }
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> Calculate()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        coefficience.coefficiencesArray = <span style=color:#66d9ef>new</span> float3[<span style=color:#ae81ff>9</span>];
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>int</span> kernel = sphericalHarmonicsComputeShader.FindKernel(<span style=color:#e6db74>&#34;CalculateSHMain&#34;</span>);
+</span></span><span style=display:flex><span>        sphericalHarmonicsComputeShader.GetKernelThreadGroupSizes(kernel, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> x, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> y, <span style=color:#66d9ef>out</span> <span style=color:#66d9ef>uint</span> z);
+</span></span><span style=display:flex><span>        Vector3Int dispatchCounts = <span style=color:#66d9ef>new</span> Vector3Int(Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)cubeMap.width / (<span style=color:#66d9ef>float</span>)x),
+</span></span><span style=display:flex><span>                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)cubeMap.height / (<span style=color:#66d9ef>float</span>)y),
+</span></span><span style=display:flex><span>                                                    Mathf.CeilToInt((<span style=color:#66d9ef>float</span>)<span style=color:#ae81ff>6</span> / (<span style=color:#66d9ef>float</span>)z));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span> (pack3Buffer != <span style=color:#66d9ef>null</span>)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            pack3Buffer.Release();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        pack3Buffer = <span style=color:#66d9ef>new</span> ComputeBuffer(dispatchCounts.x * dispatchCounts.y * dispatchCounts.z, <span style=color:#ae81ff>3</span> * <span style=color:#ae81ff>3</span> * <span style=color:#ae81ff>4</span>, ComputeBufferType.Structured);
+</span></span><span style=display:flex><span>        pack3Array = <span style=color:#66d9ef>new</span> CoeffsPack3[dispatchCounts.x * dispatchCounts.y * dispatchCounts.z];
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i = <span style=color:#ae81ff>0</span>; i &lt; dispatchCounts.x * dispatchCounts.y * dispatchCounts.z; i++)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            pack3Array[i] = <span style=color:#66d9ef>new</span> CoeffsPack3(<span style=color:#ae81ff>0</span>);
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        pack3Buffer.SetData(pack3Array);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//用于确认传入的参数</span>
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#e6db74>&#34;_TextureSize: &#34;</span> + cubeMap.width + <span style=color:#e6db74>&#34;, &#34;</span> + cubeMap.height + <span style=color:#e6db74>&#34;, &#34;</span> + <span style=color:#ae81ff>6</span>);
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#e6db74>&#34;_ThreadGroups: &#34;</span> + x + <span style=color:#e6db74>&#34;, &#34;</span> + y + <span style=color:#e6db74>&#34;, &#34;</span> + z);
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#e6db74>&#34;_DispatchCounts: &#34;</span> + dispatchCounts.x + <span style=color:#e6db74>&#34;, &#34;</span> + dispatchCounts.y + <span style=color:#e6db74>&#34;, &#34;</span> + dispatchCounts.z);
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#e6db74>&#34;_GroupCounts: &#34;</span> + dispatchCounts.x * dispatchCounts.y * dispatchCounts.z);
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#e6db74>&#34;_GroupThreadCounts: &#34;</span> + x * y * z);
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#e6db74>&#34;_CubeMapTexture: &#34;</span> + cubeMap.name);
+</span></span><span style=display:flex><span>        Debug.Log(<span style=color:#e6db74>&#34;---------------------------------&#34;</span>);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        sphericalHarmonicsComputeShader.SetTexture(kernel, <span style=color:#e6db74>&#34;_CubeMapTexture&#34;</span>, cubeMap);
+</span></span><span style=display:flex><span>        sphericalHarmonicsComputeShader.SetBuffer(kernel, <span style=color:#e6db74>&#34;_GroupCoefficients&#34;</span>, pack3Buffer);
+</span></span><span style=display:flex><span>        sphericalHarmonicsComputeShader.SetVector(<span style=color:#e6db74>&#34;_DispatchCount&#34;</span>, (Vector3)dispatchCounts);
+</span></span><span style=display:flex><span>        sphericalHarmonicsComputeShader.SetVector(<span style=color:#e6db74>&#34;_TextureSize&#34;</span>, <span style=color:#66d9ef>new</span> Vector3(cubeMap.width, cubeMap.height, <span style=color:#ae81ff>6</span>));
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float</span> inv4PI = <span style=color:#ae81ff>0.25f</span> / Mathf.PI;
+</span></span><span style=display:flex><span>        <span style=color:#75715e>//分三次，每次计算三个球谐参数</span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> shPackIndex = <span style=color:#ae81ff>0</span>; shPackIndex &lt; <span style=color:#ae81ff>3</span>; shPackIndex++)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            sphericalHarmonicsComputeShader.SetFloat(<span style=color:#e6db74>&#34;_SHPackIndex&#34;</span>, shPackIndex);
+</span></span><span style=display:flex><span>            sphericalHarmonicsComputeShader.Dispatch(kernel, dispatchCounts.x, dispatchCounts.y, dispatchCounts.z);
+</span></span><span style=display:flex><span>            Debug.Log(<span style=color:#e6db74>&#34;Dispatch with (&#34;</span> + dispatchCounts.x + <span style=color:#e6db74>&#34;, &#34;</span> + dispatchCounts.y + <span style=color:#e6db74>&#34;, &#34;</span> + dispatchCounts.z + <span style=color:#e6db74>&#34;).&#34;</span>);
+</span></span><span style=display:flex><span>            pack3Buffer.GetData(pack3Array);
+</span></span><span style=display:flex><span>            CoeffsPack3 tempCoeffs = SumCoeffs(pack3Array);
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>            coefficience.coefficiencesArray[shPackIndex * <span style=color:#ae81ff>3</span> + <span style=color:#ae81ff>0</span>] = tempCoeffs.coeff0 * inv4PI;
+</span></span><span style=display:flex><span>            coefficience.coefficiencesArray[shPackIndex * <span style=color:#ae81ff>3</span> + <span style=color:#ae81ff>1</span>] = tempCoeffs.coeff1 * inv4PI;
+</span></span><span style=display:flex><span>            coefficience.coefficiencesArray[shPackIndex * <span style=color:#ae81ff>3</span> + <span style=color:#ae81ff>2</span>] = tempCoeffs.coeff2 * inv4PI;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        pack3Buffer.Release();
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>string</span> debugLog = <span style=color:#e6db74>&#34;&#34;</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>for</span> (<span style=color:#66d9ef>int</span> i = <span style=color:#ae81ff>0</span>; i &lt; <span style=color:#ae81ff>9</span>; i++)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            debugLog += coefficience.coefficiencesArray[i] + <span style=color:#e6db74>&#34;...&#34;</span>;
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#75715e>//给对应的mesh renderer的材质传入buffer</span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>void</span> SetBuffer()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>if</span>(coefficiencesBuffer != <span style=color:#66d9ef>null</span>)
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            coefficiencesBuffer.Release();
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>        coefficiencesBuffer = <span style=color:#66d9ef>new</span> ComputeBuffer(<span style=color:#ae81ff>9</span>, <span style=color:#ae81ff>3</span> * <span style=color:#ae81ff>4</span>, ComputeBufferType.Structured);
+</span></span><span style=display:flex><span>        coefficiencesBuffer.SetData(coefficience.coefficiencesArray);
+</span></span><span style=display:flex><span>        targetMesh.sharedMaterial.SetBuffer(<span style=color:#e6db74>&#34;_CoefficienceBuffer&#34;</span>, coefficiencesBuffer);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> Dispose()
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        pack3Buffer.Release();
+</span></span><span style=display:flex><span>        coefficiencesBuffer.Release();
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><h3 id=sphericalharmonicsshader>SphericalHarmonics.shader<a hidden class=anchor aria-hidden=true href=#sphericalharmonicsshader>#</a></h3><p>从传入的StructuredBuffer中获取球谐参数，计算辐照度，同时我还增加了一个选项，用于对比我计算出的球谐参数和实际的球谐参数：</p><div class=highlight><pre tabindex=0 style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-HLSL data-lang=HLSL><span style=display:flex><span>Shader <span style=color:#e6db74>&#34;Unlit/SphericalHarmonicsShader&#34;</span>
+</span></span><span style=display:flex><span>{
+</span></span><span style=display:flex><span>    Properties
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        [Toggle(USE_GRACE)]_Use_Grace (<span style=color:#e6db74>&#34;Use Grace&#34;</span>, <span style=color:#66d9ef>float</span>) <span style=color:#f92672>=</span> <span style=color:#ae81ff>1</span>
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    HLSLINCLUDE
+</span></span><span style=display:flex><span>    <span style=color:#960050;background-color:#1e0010>#</span>include <span style=color:#e6db74>&#34;Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl&#34;</span>
+</span></span><span style=display:flex><span>    <span style=color:#960050;background-color:#1e0010>#</span>include <span style=color:#e6db74>&#34;Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl&#34;</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#960050;background-color:#1e0010>#</span>pragma multi_compile _ USE_GRACE
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#if USE_GRACE</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#define Coeffs grace</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#else</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#define Coeffs _CoefficienceBuffer</span>
+</span></span><span style=display:flex><span><span style=color:#75715e>#endif</span>
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>StructuredBuffer</span><span style=color:#f92672>&lt;</span><span style=color:#66d9ef>float3</span><span style=color:#f92672>&gt;</span> _CoefficienceBuffer;
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>static</span> <span style=color:#66d9ef>float3</span> grace[] <span style=color:#f92672>=</span>
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span>(<span style=color:#ae81ff>0.7953949</span>, <span style=color:#ae81ff>0.4405923</span>, <span style=color:#ae81ff>0.5459412</span>),
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span>(<span style=color:#ae81ff>0.3981450</span>, <span style=color:#ae81ff>0.3526911</span>, <span style=color:#ae81ff>0.6097158</span>),
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span>(<span style=color:#f92672>-</span><span style=color:#ae81ff>0.3424573</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.1838151</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.2715583</span>),
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span>(<span style=color:#f92672>-</span><span style=color:#ae81ff>0.2944621</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.0560606</span>, <span style=color:#ae81ff>0.0095193</span>),
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span>(<span style=color:#f92672>-</span><span style=color:#ae81ff>0.1123051</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.0513088</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.1232869</span>),
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span>(<span style=color:#f92672>-</span><span style=color:#ae81ff>0.2645007</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.2257996</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.4785847</span>),
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span>(<span style=color:#f92672>-</span><span style=color:#ae81ff>0.1569444</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.0954703</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.1485053</span>),
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span>(<span style=color:#ae81ff>0.5646247</span>, <span style=color:#ae81ff>0.2161586</span>, <span style=color:#ae81ff>0.1402643</span>),
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span>(<span style=color:#ae81ff>0.2137442</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.0547578</span>, <span style=color:#f92672>-</span><span style=color:#ae81ff>0.3061700</span>)
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> Attributes
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float4</span> positionOS   <span style=color:#f92672>:</span> POSITION;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float2</span> uv           <span style=color:#f92672>:</span> TEXCOORD0;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span> normalOS     <span style=color:#f92672>:</span> NORMAL;
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>struct</span> Varyings
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float4</span> positionCS   <span style=color:#f92672>:</span> SV_POSITION;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float2</span> texcoord     <span style=color:#f92672>:</span> TEXCOORD0;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span> normalWS     <span style=color:#f92672>:</span> TEXCOORD1;
+</span></span><span style=display:flex><span>    };
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float3</span> CalcIrradiance(<span style=color:#66d9ef>float3</span> nor) { 
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float</span> c1 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.429043</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float</span> c2 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.511664</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float</span> c3 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.743125</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float</span> c4 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.886227</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float</span> c5 <span style=color:#f92672>=</span> <span style=color:#ae81ff>0.247708</span>;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> (
+</span></span><span style=display:flex><span>            c1 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>8</span>] <span style=color:#f92672>*</span> (nor.x <span style=color:#f92672>*</span> nor.x <span style=color:#f92672>-</span> nor.y <span style=color:#f92672>*</span> nor.y) <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>            c3 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>6</span>] <span style=color:#f92672>*</span> nor.z <span style=color:#f92672>*</span> nor.z <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>            c4 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>0</span>] <span style=color:#f92672>-</span>
+</span></span><span style=display:flex><span>            c5 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>6</span>] <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>            <span style=color:#ae81ff>2.0</span> <span style=color:#f92672>*</span> c1 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>4</span>] <span style=color:#f92672>*</span> nor.x <span style=color:#f92672>*</span> nor.y <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>            <span style=color:#ae81ff>2.0</span> <span style=color:#f92672>*</span> c1 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>7</span>] <span style=color:#f92672>*</span> nor.x <span style=color:#f92672>*</span> nor.z <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>            <span style=color:#ae81ff>2.0</span> <span style=color:#f92672>*</span> c1 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>5</span>] <span style=color:#f92672>*</span> nor.y <span style=color:#f92672>*</span> nor.z <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>            <span style=color:#ae81ff>2.0</span> <span style=color:#f92672>*</span> c2 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>3</span>] <span style=color:#f92672>*</span> nor.x <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>            <span style=color:#ae81ff>2.0</span> <span style=color:#f92672>*</span> c2 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>1</span>] <span style=color:#f92672>*</span> nor.y <span style=color:#f92672>+</span>
+</span></span><span style=display:flex><span>            <span style=color:#ae81ff>2.0</span> <span style=color:#f92672>*</span> c2 <span style=color:#f92672>*</span> Coeffs[<span style=color:#ae81ff>2</span>] <span style=color:#f92672>*</span> nor.z
+</span></span><span style=display:flex><span>            );
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    Varyings Vert(Attributes input)
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        Varyings output <span style=color:#f92672>=</span> (Varyings)<span style=color:#ae81ff>0</span>;
+</span></span><span style=display:flex><span>        VertexPositionInputs vertexInput <span style=color:#f92672>=</span> GetVertexPositionInputs(input.positionOS.xyz);
+</span></span><span style=display:flex><span>        VertexNormalInputs normalInput <span style=color:#f92672>=</span> GetVertexNormalInputs(input.normalOS);
+</span></span><span style=display:flex><span>        output.positionCS <span style=color:#f92672>=</span> vertexInput.positionCS;
+</span></span><span style=display:flex><span>        output.texcoord <span style=color:#f92672>=</span> input.uv;
+</span></span><span style=display:flex><span>        output.normalWS <span style=color:#f92672>=</span> normalInput.normalWS;
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> output;
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    <span style=color:#66d9ef>float4</span> Frag(Varyings input) <span style=color:#f92672>:</span> SV_TARGET
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>float3</span> shColor <span style=color:#f92672>=</span> CalcIrradiance(normalize(input.normalWS));
+</span></span><span style=display:flex><span>        <span style=color:#66d9ef>return</span> <span style=color:#66d9ef>float4</span>(shColor, <span style=color:#ae81ff>1</span>);
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    ENDHLSL
+</span></span><span style=display:flex><span>
+</span></span><span style=display:flex><span>    SubShader
+</span></span><span style=display:flex><span>    {
+</span></span><span style=display:flex><span>        Pass
+</span></span><span style=display:flex><span>        {
+</span></span><span style=display:flex><span>            Name <span style=color:#e6db74>&#34;Spherical Harmonics Pass&#34;</span>
+</span></span><span style=display:flex><span>            Tags{<span style=color:#e6db74>&#34;LightMode&#34;</span> <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;UniversalForward&#34;</span>}
+</span></span><span style=display:flex><span>            Cull Back
+</span></span><span style=display:flex><span>            ZTest LEqual
+</span></span><span style=display:flex><span>            ZWrite On
+</span></span><span style=display:flex><span>            HLSLPROGRAM
+</span></span><span style=display:flex><span>            <span style=color:#960050;background-color:#1e0010>#</span>pragma vertex Vert
+</span></span><span style=display:flex><span>            <span style=color:#960050;background-color:#1e0010>#</span>pragma fragment Frag
+</span></span><span style=display:flex><span>            ENDHLSL
+</span></span><span style=display:flex><span>        }
+</span></span><span style=display:flex><span>    }
+</span></span><span style=display:flex><span>}
+</span></span></code></pre></div><p>最后点击“Calculate!”就能看到我们重新构建的全局光照的漫反射部分的光照信息了，大概就是这个样子。</p><p><img loading=lazy src=../images/SphericalHarmonics.jpg#center alt="Spherical Harmonics"></p></div><footer class=post-footer><ul class=post-tags><li><a href=https://zznewclear13.github.io/tags/compute-shader/>Compute Shader</a></li><li><a href=https://zznewclear13.github.io/tags/spherical-harmonics/>Spherical Harmonics</a></li></ul><nav class=paginav><a class=prev href=https://zznewclear13.github.io/posts/calculate-signed-distance-field-using-compute-shader/><span class=title>« Prev</span><br><span>使用Compute Shader计算有向距离场</span>
+</a><a class=next href=https://zznewclear13.github.io/posts/get-started-with-unity-compute-shader/><span class=title>Next »</span><br><span>Unity Compute Shader备忘录</span></a></nav></footer><div id=comments></div><script>let currentHugoTheme=window.localStorage.getItem("pref-theme");function loadComment(){const t=document.getElementById("comments");let n=currentHugoTheme=="dark"?"photon-dark":"github-light",e=document.createElement("script");e.src="https://utteranc.es/client.js",e.setAttribute("repo","zznewclear13/zznewclear13.github.io"),e.setAttribute("issue-term","pathname"),e.setAttribute("label","utterances"),e.setAttribute("theme",n),e.setAttribute("crossorigin","anonymous"),e.setAttribute("async",""),t.innerHTML="",t.appendChild(e)}loadComment(),document.getElementById("theme-toggle").onclick=async()=>{await new Promise(e=>setTimeout(e,200));let e=window.localStorage.getItem("pref-theme");e!=currentHugoTheme&&(currentHugoTheme=e,loadComment())}</script></article></main><footer class=footer><span>&copy; 2024 <a href=https://zznewclear13.github.io/>ZZNEWCLEAR13</a></span>
 <span>Powered by
 <a href=https://gohugo.io/ rel="noopener noreferrer" target=_blank>Hugo</a> &
-        <a href=https://github.com/adityatelange/hugo-PaperMod/ rel=noopener target=_blank>PaperMod</a></span></footer><script>let menu=document.getElementById('menu');menu&&(menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)}),document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener("click",function(b){b.preventDefault();var a=this.getAttribute("href").substr(1);window.matchMedia('(prefers-reduced-motion: reduce)').matches?document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView({behavior:"smooth"}),a==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${a}`)})})</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove('dark'),localStorage.setItem("pref-theme",'light')):(document.body.classList.add('dark'),localStorage.setItem("pref-theme",'dark'))})</script><script>document.querySelectorAll('pre > code').forEach(b=>{const c=b.parentNode.parentNode,a=document.createElement('button');a.classList.add('copy-code'),a.innerHTML='copy';function d(){a.innerHTML='copied!',setTimeout(()=>{a.innerHTML='copy'},2e3)}a.addEventListener('click',e=>{if('clipboard'in navigator){navigator.clipboard.writeText(b.textContent),d();return}const a=document.createRange();a.selectNodeContents(b);const c=window.getSelection();c.removeAllRanges(),c.addRange(a);try{document.execCommand('copy'),d()}catch(a){}c.removeRange(a)}),c.classList.contains("highlight")?c.appendChild(a):c.parentNode.firstChild==c||(b.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName=="TABLE"?b.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(a):b.parentNode.appendChild(a))})</script></body></html>
+        <a href=https://github.com/adityatelange/hugo-PaperMod/ rel=noopener target=_blank>PaperMod</a></span></footer><script>let menu=document.getElementById("menu");menu&&(menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)}),document.querySelectorAll('a[href^="#"]').forEach(e=>{e.addEventListener("click",function(e){e.preventDefault();var t=this.getAttribute("href").substr(1);window.matchMedia("(prefers-reduced-motion: reduce)").matches?document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(t)}']`).scrollIntoView({behavior:"smooth"}),t==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${t}`)})})</script><script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove("dark"),localStorage.setItem("pref-theme","light")):(document.body.classList.add("dark"),localStorage.setItem("pref-theme","dark"))})</script><script>document.querySelectorAll("pre > code").forEach(e=>{const n=e.parentNode.parentNode,t=document.createElement("button");t.classList.add("copy-code"),t.innerHTML="copy";function s(){t.innerHTML="copied!",setTimeout(()=>{t.innerHTML="copy"},2e3)}t.addEventListener("click",t=>{if("clipboard"in navigator){navigator.clipboard.writeText(e.textContent),s();return}const n=document.createRange();n.selectNodeContents(e);const o=window.getSelection();o.removeAllRanges(),o.addRange(n);try{document.execCommand("copy"),s()}catch{}o.removeRange(n)}),n.classList.contains("highlight")?n.appendChild(t):n.parentNode.firstChild==n||(e.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName=="TABLE"?e.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(t):e.parentNode.appendChild(t))})</script></body></html>

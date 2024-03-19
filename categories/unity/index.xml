@@ -1,18 +1,28 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
-    <title>unity on ZZNEWCLEAR13</title>
+    <title>Unity on ZZNEWCLEAR13</title>
     <link>https://zznewclear13.github.io/categories/unity/</link>
-    <description>Recent content in unity on ZZNEWCLEAR13</description>
+    <description>Recent content in Unity on ZZNEWCLEAR13</description>
     
     <image>
-      <title>unity on ZZNEWCLEAR13</title>
+      <title>Unity on ZZNEWCLEAR13</title>
       <url>https://zznewclear13.github.io/images/address.png</url>
       <link>https://zznewclear13.github.io/categories/unity/</link>
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sat, 16 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/categories/unity/index.xml" rel="self" type="application/rss+xml" />
+    <language>en</language>
+    <lastBuildDate>Tue, 19 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/categories/unity/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>在地形贴图混合时使用六边形平铺</title>
+      <link>https://zznewclear13.github.io/posts/use-hex-tiling-for-terrain-texture-blending/</link>
+      <pubDate>Tue, 19 Mar 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/use-hex-tiling-for-terrain-texture-blending/</guid>
+      <description>混合多张贴图的同时减少平铺的重复感.</description>
+    </item>
+    
     <item>
       <title>从视差映射、浮雕映射中获取正确的深度值</title>
       <link>https://zznewclear13.github.io/posts/get-correct-depth-from-parallax-occlusion-mapping/</link>

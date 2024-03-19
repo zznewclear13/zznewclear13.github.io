@@ -12,6 +12,7 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
     <lastBuildDate>Wed, 24 Aug 2022 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/ray-marching/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>使用Ray Marching来渲染体积雾</title>

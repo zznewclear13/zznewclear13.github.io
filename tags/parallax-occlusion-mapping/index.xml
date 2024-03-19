@@ -12,6 +12,7 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
     <lastBuildDate>Sat, 16 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/parallax-occlusion-mapping/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>从视差映射、浮雕映射中获取正确的深度值</title>

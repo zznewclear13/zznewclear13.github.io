@@ -12,7 +12,26 @@
     </image>
     
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Sat, 16 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <language>en</language>
+    <lastBuildDate>Tue, 19 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Hex Tiling</title>
+      <link>https://zznewclear13.github.io/tags/hex-tiling/</link>
+      <pubDate>Tue, 19 Mar 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/hex-tiling/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Terrain</title>
+      <link>https://zznewclear13.github.io/tags/terrain/</link>
+      <pubDate>Tue, 19 Mar 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/terrain/</guid>
+      <description></description>
+    </item>
+    
     <item>
       <title>Parallax Occlusion Mapping</title>
       <link>https://zznewclear13.github.io/tags/parallax-occlusion-mapping/</link>
