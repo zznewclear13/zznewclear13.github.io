@@ -13,7 +13,16 @@
     
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Tue, 19 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 30 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Compute Shader</title>
+      <link>https://zznewclear13.github.io/tags/compute-shader/</link>
+      <pubDate>Sat, 30 Mar 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/compute-shader/</guid>
+      <description></description>
+    </item>
+    
     <item>
       <title>Hex Tiling</title>
       <link>https://zznewclear13.github.io/tags/hex-tiling/</link>
@@ -92,15 +101,6 @@
       <pubDate>Sat, 22 Jul 2023 12:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/tags/post-process/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Compute Shader</title>
-      <link>https://zznewclear13.github.io/tags/compute-shader/</link>
-      <pubDate>Sat, 01 Jul 2023 19:00:00 +0800</pubDate>
-      
-      <guid>https://zznewclear13.github.io/tags/compute-shader/</guid>
       <description></description>
     </item>
     
