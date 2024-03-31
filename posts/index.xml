@@ -13,7 +13,16 @@
     
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Sat, 30 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 31 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>使用Group Shared Memory加速径向模糊</title>
+      <link>https://zznewclear13.github.io/posts/accelerate-radial-blur-using-group-shared-memory/</link>
+      <pubDate>Sun, 31 Mar 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/accelerate-radial-blur-using-group-shared-memory/</guid>
+      <description>利用Compute Shader的优势进一步优化径向模糊.</description>
+    </item>
+    
     <item>
       <title>径向分派Compute Shader</title>
       <link>https://zznewclear13.github.io/posts/dispatch-compute-shader-in-a-radial-way/</link>
