@@ -13,22 +13,40 @@
     
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Sun, 31 Mar 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 20 Apr 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Compute Shader</title>
+      <link>https://zznewclear13.github.io/tags/compute-shader/</link>
+      <pubDate>Sat, 20 Apr 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/compute-shader/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Contact Shadow</title>
+      <link>https://zznewclear13.github.io/tags/contact-shadow/</link>
+      <pubDate>Sat, 20 Apr 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/contact-shadow/</guid>
+      <description></description>
+    </item>
+    
+    <item>
+      <title>Screen Space</title>
+      <link>https://zznewclear13.github.io/tags/screen-space/</link>
+      <pubDate>Sat, 20 Apr 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/tags/screen-space/</guid>
+      <description></description>
+    </item>
+    
     <item>
       <title>Blur</title>
       <link>https://zznewclear13.github.io/tags/blur/</link>
       <pubDate>Sun, 31 Mar 2024 12:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/tags/blur/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Compute Shader</title>
-      <link>https://zznewclear13.github.io/tags/compute-shader/</link>
-      <pubDate>Sun, 31 Mar 2024 12:00:00 +0800</pubDate>
-      
-      <guid>https://zznewclear13.github.io/tags/compute-shader/</guid>
       <description></description>
     </item>
     
@@ -92,15 +110,6 @@
       <pubDate>Sat, 16 Mar 2024 12:00:00 +0800</pubDate>
       
       <guid>https://zznewclear13.github.io/tags/space-transformation/</guid>
-      <description></description>
-    </item>
-    
-    <item>
-      <title>Screen Space</title>
-      <link>https://zznewclear13.github.io/tags/screen-space/</link>
-      <pubDate>Sat, 09 Mar 2024 18:00:00 +0800</pubDate>
-      
-      <guid>https://zznewclear13.github.io/tags/screen-space/</guid>
       <description></description>
     </item>
     

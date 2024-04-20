@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Contact Shadow on ZZNEWCLEAR13</title>
+    <link>https://zznewclear13.github.io/tags/contact-shadow/</link>
+    <description>Recent content in Contact Shadow on ZZNEWCLEAR13</description>
+    
+    <image>
+      <title>Contact Shadow on ZZNEWCLEAR13</title>
+      <url>https://zznewclear13.github.io/images/address.png</url>
+      <link>https://zznewclear13.github.io/tags/contact-shadow/</link>
+    </image>
+    
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Sat, 20 Apr 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/contact-shadow/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>使用Compute Shader计算屏幕空间接触阴影</title>
+      <link>https://zznewclear13.github.io/posts/calculate-screen-space-contact-shadow-using-compute-shader/</link>
+      <pubDate>Sat, 20 Apr 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/calculate-screen-space-contact-shadow-using-compute-shader/</guid>
+      <description>通过径向分派Compute Shader，使用Group Shared Memory缓存深度值.</description>
+    </item>
+    
+  </channel>
+</rss>
