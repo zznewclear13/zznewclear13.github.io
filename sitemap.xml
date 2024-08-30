@@ -2,6 +2,12 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
+    <loc>https://zznewclear13.github.io/posts/</loc>
+    <lastmod>2024-08-17T12:00:00+08:00</lastmod>
+  </url><url>
+    <loc>https://zznewclear13.github.io/</loc>
+    <lastmod>2024-08-17T12:00:00+08:00</lastmod>
+  </url><url>
     <loc>https://zznewclear13.github.io/categories/</loc>
     <lastmod>2024-04-20T12:00:00+08:00</lastmod>
   </url><url>
@@ -11,9 +17,6 @@
     <loc>https://zznewclear13.github.io/tags/contact-shadow/</loc>
     <lastmod>2024-04-20T12:00:00+08:00</lastmod>
   </url><url>
-    <loc>https://zznewclear13.github.io/posts/</loc>
-    <lastmod>2024-04-20T12:00:00+08:00</lastmod>
-  </url><url>
     <loc>https://zznewclear13.github.io/tags/screen-space/</loc>
     <lastmod>2024-04-20T12:00:00+08:00</lastmod>
   </url><url>
@@ -21,9 +24,6 @@
     <lastmod>2024-04-20T12:00:00+08:00</lastmod>
   </url><url>
     <loc>https://zznewclear13.github.io/categories/unity/</loc>
-    <lastmod>2024-04-20T12:00:00+08:00</lastmod>
-  </url><url>
-    <loc>https://zznewclear13.github.io/</loc>
     <lastmod>2024-04-20T12:00:00+08:00</lastmod>
   </url><url>
     <loc>https://zznewclear13.github.io/posts/calculate-screen-space-contact-shadow-using-compute-shader/</loc>
