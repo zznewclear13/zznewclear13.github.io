@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Shadow on ZZNEWCLEAR13</title>
+    <link>https://zznewclear13.github.io/tags/shadow/</link>
+    <description>Recent content in Shadow on ZZNEWCLEAR13</description>
+    
+    <image>
+      <title>Shadow on ZZNEWCLEAR13</title>
+      <url>https://zznewclear13.github.io/images/address.png</url>
+      <link>https://zznewclear13.github.io/tags/shadow/</link>
+    </image>
+    
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en</language>
+    <lastBuildDate>Sat, 05 Oct 2024 12:00:00 +0800</lastBuildDate><atom:link href="https://zznewclear13.github.io/tags/shadow/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>在URP的片元着色器中应用阴影偏移</title>
+      <link>https://zznewclear13.github.io/posts/unity-urp-apply-shadow-bias-in-fragment-shader/</link>
+      <pubDate>Sat, 05 Oct 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/unity-urp-apply-shadow-bias-in-fragment-shader/</guid>
+      <description>避免在shadow caster pass中偏移顶点带来的瑕疵.</description>
+    </item>
+    
+  </channel>
+</rss>
