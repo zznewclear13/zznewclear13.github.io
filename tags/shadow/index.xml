@@ -23,5 +23,14 @@
       <description>避免在shadow caster pass中偏移顶点带来的瑕疵.</description>
     </item>
     
+    <item>
+      <title>使用Compute Shader计算屏幕空间接触阴影</title>
+      <link>https://zznewclear13.github.io/posts/calculate-screen-space-contact-shadow-using-compute-shader/</link>
+      <pubDate>Sat, 20 Apr 2024 12:00:00 +0800</pubDate>
+      
+      <guid>https://zznewclear13.github.io/posts/calculate-screen-space-contact-shadow-using-compute-shader/</guid>
+      <description>通过径向分派Compute Shader，使用Group Shared Memory缓存深度值.</description>
+    </item>
+    
   </channel>
 </rss>

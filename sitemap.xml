@@ -5,9 +5,6 @@
     <loc>https://zznewclear13.github.io/categories/</loc>
     <lastmod>2024-10-05T12:00:00+08:00</lastmod>
   </url><url>
-    <loc>https://zznewclear13.github.io/tags/post-process/</loc>
-    <lastmod>2024-10-05T12:00:00+08:00</lastmod>
-  </url><url>
     <loc>https://zznewclear13.github.io/posts/</loc>
     <lastmod>2024-10-05T12:00:00+08:00</lastmod>
   </url><url>
@@ -29,9 +26,6 @@
     <loc>https://zznewclear13.github.io/tags/compute-shader/</loc>
     <lastmod>2024-04-20T12:00:00+08:00</lastmod>
   </url><url>
-    <loc>https://zznewclear13.github.io/tags/contact-shadow/</loc>
-    <lastmod>2024-04-20T12:00:00+08:00</lastmod>
-  </url><url>
     <loc>https://zznewclear13.github.io/tags/screen-space/</loc>
     <lastmod>2024-04-20T12:00:00+08:00</lastmod>
   </url><url>
@@ -42,6 +36,9 @@
     <lastmod>2024-03-31T12:00:00+08:00</lastmod>
   </url><url>
     <loc>https://zznewclear13.github.io/tags/group-shared-memory/</loc>
+    <lastmod>2024-03-31T12:00:00+08:00</lastmod>
+  </url><url>
+    <loc>https://zznewclear13.github.io/tags/post-process/</loc>
     <lastmod>2024-03-31T12:00:00+08:00</lastmod>
   </url><url>
     <loc>https://zznewclear13.github.io/posts/accelerate-radial-blur-using-group-shared-memory/</loc>
